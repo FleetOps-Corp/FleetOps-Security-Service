@@ -1,0 +1,10 @@
+[run]
+source = app/domain,app/middleware
+
+[report]
+# Exclude modules that are pure configuration/wiring (no logic to unit-test)
+# These are covered by integration tests (docker compose up)
+omit =
+    app/middleware/rate_limit.py
+
+fail_under = 95

@@ -1,0 +1,15 @@
+[importlinter]
+root_packages =
+    app
+
+[importlinter:contract:auth-service-layers]
+name = Auth Service Layers
+type = layers
+
+layers =
+    api
+    infrastructure
+    domain
+
+containers =
+    app

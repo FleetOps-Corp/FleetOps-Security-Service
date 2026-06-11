@@ -1,0 +1,1 @@
+# API layer — Auth Service

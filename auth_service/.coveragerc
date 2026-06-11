@@ -1,0 +1,8 @@
+[run]
+source = app/domain,app/infrastructure
+
+[report]
+omit =
+    app/infrastructure/database.py
+
+fail_under = 95

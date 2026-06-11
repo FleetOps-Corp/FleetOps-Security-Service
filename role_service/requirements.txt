@@ -1,0 +1,34 @@
+# =============================================================================
+# Role Service — Python dependencies
+# =============================================================================
+
+fastapi==0.115.5
+uvicorn[standard]==0.32.1
+
+sqlalchemy[asyncio]==2.0.36
+asyncpg==0.30.0
+psycopg2-binary==2.9.10
+
+alembic==1.14.0
+
+redis==5.2.0
+
+pydantic==2.9.2
+pydantic-settings==2.6.1
+
+pytest==8.3.3
+pytest-asyncio==0.24.0
+pytest-cov==6.0.0
+pytest-mock==3.14.0
+
+# Static code analysis (style, imports, common errors)
+ruff==0.15.16
+
+# Static type checking
+mypy==2.1.0
+
+# Architecture dependency validation
+import-linter==2.11
+
+# Test client utilities
+httpx==0.27.2
