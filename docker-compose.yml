@@ -86,6 +86,8 @@ services:
     build:
       context: ./auth_service
       dockerfile: Dockerfile
+    volumes:
+     - ./auth_service:/app
     container_name: fleetops_auth_service
     restart: unless-stopped
     env_file:
@@ -127,6 +129,8 @@ services:
     build:
       context: ./role_service
       dockerfile: Dockerfile
+    volumes:
+      - ./role_service:/app
     container_name: fleetops_role_service
     restart: unless-stopped
     env_file:
@@ -167,6 +171,8 @@ services:
     build:
       context: ./api_gateway
       dockerfile: Dockerfile
+    volumes:
+      - ./api_gateway:/app
     container_name: fleetops_api_gateway
     restart: unless-stopped
     env_file:

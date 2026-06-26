@@ -98,6 +98,19 @@ class RouteRegistry:
             ),
 
             # ------------------------------------------------------------------
+            # Roles — ADMINISTRADOR only
+            # SAD §3: "la administración del sistema" assigns and removes roles.
+            # ------------------------------------------------------------------
+            RouteEntry(
+                prefix="/roles",
+                upstream_url_key="role_service_url",
+                allowed_roles=frozenset({
+                    Role.ADMINISTRADOR,
+                }),
+                description="Role management microservice: /roles/assign, /roles/remove, /roles/user",
+            ),
+            
+            # ------------------------------------------------------------------
             # Vehículos — EMPLEADO_MANTENIMIENTO, EMPLEADO_INCIDENTES, ADMINISTRADOR
             # SAD §1: Empleado de mantenimiento accede a info relevante del vehículo.
             #         Empleado de incidentes accede a info del vehículo y conductor.

@@ -17,7 +17,9 @@ sys.path.insert(
     )
 )
 
-from app.infrastructure.models import Base  # noqa: F401
+
+from app.infrastructure.database import Base
+from app.infrastructure.models import RoleModel, UserRoleModel
 
 config = context.config
 

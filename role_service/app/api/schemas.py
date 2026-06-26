@@ -14,7 +14,7 @@ class RoleValidationRequest(BaseModel):
     SAD pág. 10 flow: sent by the API Gateway to verify permissions.
     """
     user_id: str = Field(..., description="User UUID from the JWT 'sub' claim")
-    required_roles: list[str] = Field(
+    required_roles: list[str] = Field( 
         ...,
         min_length=1,
         description="List of role names — access is granted if user holds any one of them",
