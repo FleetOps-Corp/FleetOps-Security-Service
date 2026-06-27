@@ -94,7 +94,10 @@ async def proxy_request(
     if not decision.authorized:
         logger.warning(
             "Access denied | user_id=%s | role=%s | path=%s | reason=%s",
-            user_id, user_role, path, decision.reason,
+            user_id,
+            user_role,
+            path,
+            decision.reason,
         )
 
         # Distinguish between "not authenticated" and "wrong role"
@@ -123,15 +126,15 @@ async def proxy_request(
 
     logger.info(
         "Proxying request | user_id=%s | role=%s | path=%s → %s",
-        user_id, user_role, path, upstream_base,
+        user_id,
+        user_role,
+        path,
+        upstream_base,
     )
 
     # --- Step 4: Forward request to upstream microservice ---
     body = await request.body()
-    headers = {
-        k: v for k, v in request.headers.items()
-        if k.lower() not in ("host", "content-length")
-    }
+    headers = {k: v for k, v in request.headers.items() if k.lower() not in ("host", "content-length")}
 
     # Inject identity headers for downstream microservices (SAD §4: accountability)
     if jwt_claims:
@@ -151,7 +154,8 @@ async def proxy_request(
 
         logger.info(
             "Upstream responded | path=%s | status=%s",
-            path, upstream_response.status_code,
+            path,
+            upstream_response.status_code,
         )
 
         # Step 5: Return upstream response to client
@@ -165,7 +169,9 @@ async def proxy_request(
     except httpx.RequestError as exc:
         logger.error(
             "Upstream unreachable | path=%s | target=%s | error=%s",
-            path, upstream_base, str(exc),
+            path,
+            upstream_base,
+            str(exc),
         )
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,

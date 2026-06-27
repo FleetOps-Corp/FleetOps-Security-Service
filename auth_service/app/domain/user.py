@@ -24,6 +24,7 @@ class UserRole(str, Enum):
     SAD §1: Roles del sistema FleetOps.
     Confirmed: new users default to EMPLEADO (team agreement §1 confirmation).
     """
+
     EMPLEADO = "EMPLEADO"
     EMPLEADO_MANTENIMIENTO = "EMPLEADO_MANTENIMIENTO"
     EMPLEADO_INCIDENTES = "EMPLEADO_INCIDENTES"
@@ -44,6 +45,7 @@ class User:
     Infrastructure concerns (persistence, hashing) are handled in the
     repository and domain service layers respectively.
     """
+
     id: str
     email: str
     hashed_password: str
@@ -71,11 +73,12 @@ class User:
             A new User domain entity (not yet persisted).
         """
         now = datetime.now(timezone.utc)
+        actual_role = role if role is not None else UserRole.EMPLEADO
         return cls(
             id=str(uuid.uuid4()),
             email=email.lower().strip(),
             hashed_password=hashed_password,
-            role=role or UserRole.default(),
+            role=actual_role,
             is_active=True,
             created_at=now,
             updated_at=now,

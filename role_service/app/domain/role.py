@@ -17,6 +17,7 @@ from typing import Optional
 
 class RoleName(str, Enum):
     """Canonical role names (SAD §1)."""
+
     EMPLEADO = "EMPLEADO"
     EMPLEADO_MANTENIMIENTO = "EMPLEADO_MANTENIMIENTO"
     EMPLEADO_INCIDENTES = "EMPLEADO_INCIDENTES"
@@ -29,6 +30,7 @@ class Role:
     Domain entity representing a system role.
     SAD §1: roles that define access boundaries in FleetOps.
     """
+
     id: str
     name: str
     description: str
@@ -59,6 +61,7 @@ class UserRoleAssignment:
     Domain entity representing the assignment of a role to a user.
     SAD: user_roles table — admins assign roles, users cannot self-assign (§3).
     """
+
     id: str
     user_id: str
     role_id: str

@@ -18,6 +18,7 @@ from app.domain.role import Role, UserRoleAssignment
 # Infrastructure ports
 # ---------------------------------------------------------------------------
 
+
 class RoleRepository(Protocol):
     async def find_role_by_name(self, name: str) -> Role | None: ...
     async def find_roles_by_user_id(self, user_id: str) -> list[UserRoleAssignment]: ...
@@ -25,11 +26,13 @@ class RoleRepository(Protocol):
     async def assign_role_to_user(self, assignment: UserRoleAssignment) -> UserRoleAssignment: ...
     async def remove_role_from_user(self, user_id: str, role_name: str) -> bool: ...
     async def role_exists_by_name(self, name: str) -> bool: ...
+    async def update_user_current_role(self, user_id: str, role_id: str) -> bool: ...
 
 
 # ---------------------------------------------------------------------------
 # Domain exceptions
 # ---------------------------------------------------------------------------
+
 
 class RoleNotFoundError(Exception):
     pass
@@ -42,6 +45,7 @@ class RoleAssignmentError(Exception):
 # ---------------------------------------------------------------------------
 # Domain Service
 # ---------------------------------------------------------------------------
+
 
 class RoleDomainService:
     """
@@ -105,12 +109,17 @@ class RoleDomainService:
         if not role.is_active:
             raise RoleAssignmentError(f"Role '{role_name}' is currently disabled.")
 
+        user_updated = await self._repo.update_user_current_role(user_id=user_id, role_id=role.id)
+        if not user_updated:
+            raise RoleAssignmentError(f"User with ID '{user_id}' could not be found to update role.")
+
         assignment = UserRoleAssignment.create(
             user_id=user_id,
             role_id=role.id,
             role_name=role.name,
             assigned_by=assigned_by,
         )
+
         return await self._repo.assign_role_to_user(assignment)
 
     async def remove_role(self, user_id: str, role_name: str) -> bool:
@@ -120,7 +129,5 @@ class RoleDomainService:
         """
         removed = await self._repo.remove_role_from_user(user_id, role_name.upper())
         if not removed:
-            raise RoleNotFoundError(
-                f"User '{user_id}' does not have role '{role_name}'."
-            )
+            raise RoleNotFoundError(f"User '{user_id}' does not have role '{role_name}'.")
         return True

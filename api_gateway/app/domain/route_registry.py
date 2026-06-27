@@ -29,6 +29,7 @@ class Role(str, Enum):
     Enumeration of all system roles.
     SAD §1: Roles pensados para el sistema FleetOps.
     """
+
     EMPLEADO = "EMPLEADO"
     EMPLEADO_MANTENIMIENTO = "EMPLEADO_MANTENIMIENTO"
     EMPLEADO_INCIDENTES = "EMPLEADO_INCIDENTES"
@@ -48,6 +49,7 @@ class RouteEntry:
                          (e.g. /auth/login, /auth/register).
         description:     Human-readable description for documentation.
     """
+
     prefix: str
     upstream_url_key: str
 
@@ -96,7 +98,6 @@ class RouteRegistry:
                 allowed_roles=frozenset(),
                 description="Authentication endpoints: /auth/login, /auth/register",
             ),
-
             # ------------------------------------------------------------------
             # Roles — ADMINISTRADOR only
             # SAD §3: "la administración del sistema" assigns and removes roles.
@@ -104,12 +105,13 @@ class RouteRegistry:
             RouteEntry(
                 prefix="/roles",
                 upstream_url_key="role_service_url",
-                allowed_roles=frozenset({
-                    Role.ADMINISTRADOR,
-                }),
+                allowed_roles=frozenset(
+                    {
+                        Role.ADMINISTRADOR,
+                    }
+                ),
                 description="Role management microservice: /roles/assign, /roles/remove, /roles/user",
             ),
-            
             # ------------------------------------------------------------------
             # Vehículos — EMPLEADO_MANTENIMIENTO, EMPLEADO_INCIDENTES, ADMINISTRADOR
             # SAD §1: Empleado de mantenimiento accede a info relevante del vehículo.
@@ -119,14 +121,15 @@ class RouteRegistry:
             RouteEntry(
                 prefix="/vehiculos",
                 upstream_url_key="vehicles_service_url",
-                allowed_roles=frozenset({
-                    Role.EMPLEADO_MANTENIMIENTO,
-                    Role.EMPLEADO_INCIDENTES,
-                    Role.ADMINISTRADOR,
-                }),
+                allowed_roles=frozenset(
+                    {
+                        Role.EMPLEADO_MANTENIMIENTO,
+                        Role.EMPLEADO_INCIDENTES,
+                        Role.ADMINISTRADOR,
+                    }
+                ),
                 description="Vehicle management microservice",
             ),
-
             # ------------------------------------------------------------------
             # Asignaciones — EMPLEADO, ADMINISTRADOR
             # SAD §1: Empleado accede a sus asignaciones (ruta + vehículo).
@@ -134,13 +137,14 @@ class RouteRegistry:
             RouteEntry(
                 prefix="/asignaciones",
                 upstream_url_key="assignments_service_url",
-                allowed_roles=frozenset({
-                    Role.EMPLEADO,
-                    Role.ADMINISTRADOR,
-                }),
+                allowed_roles=frozenset(
+                    {
+                        Role.EMPLEADO,
+                        Role.ADMINISTRADOR,
+                    }
+                ),
                 description="Assignment management microservice",
             ),
-
             # ------------------------------------------------------------------
             # Incidentes — EMPLEADO_INCIDENTES, ADMINISTRADOR
             # SAD §1: Empleado de incidentes gestiona incidentes mecánicos o humanos.
@@ -148,13 +152,14 @@ class RouteRegistry:
             RouteEntry(
                 prefix="/incidentes",
                 upstream_url_key="incidents_service_url",
-                allowed_roles=frozenset({
-                    Role.EMPLEADO_INCIDENTES,
-                    Role.ADMINISTRADOR,
-                }),
+                allowed_roles=frozenset(
+                    {
+                        Role.EMPLEADO_INCIDENTES,
+                        Role.ADMINISTRADOR,
+                    }
+                ),
                 description="Incident management microservice",
             ),
-
             # ------------------------------------------------------------------
             # Mantenimiento — EMPLEADO_MANTENIMIENTO, ADMINISTRADOR
             # SAD §1: Empleado de mantenimiento accede a info de mantenimiento.
@@ -162,13 +167,14 @@ class RouteRegistry:
             RouteEntry(
                 prefix="/mantenimiento",
                 upstream_url_key="maintenance_service_url",
-                allowed_roles=frozenset({
-                    Role.EMPLEADO_MANTENIMIENTO,
-                    Role.ADMINISTRADOR,
-                }),
+                allowed_roles=frozenset(
+                    {
+                        Role.EMPLEADO_MANTENIMIENTO,
+                        Role.ADMINISTRADOR,
+                    }
+                ),
                 description="Maintenance management microservice",
             ),
-
             # ------------------------------------------------------------------
             # Reportes — ADMINISTRADOR only
             # SAD §1: Administrador genera informes estratégicos.
@@ -176,9 +182,11 @@ class RouteRegistry:
             RouteEntry(
                 prefix="/reportes",
                 upstream_url_key="reports_service_url",
-                allowed_roles=frozenset({
-                    Role.ADMINISTRADOR,
-                }),
+                allowed_roles=frozenset(
+                    {
+                        Role.ADMINISTRADOR,
+                    }
+                ),
                 description="Reports microservice — strategic reports",
             ),
         ]

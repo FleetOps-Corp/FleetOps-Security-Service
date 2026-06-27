@@ -1,12 +1,204 @@
-name: Pipeline inicial
+# =============================================================================
+# FILE: .github/workflows/ci.yml
+# PROJECT: FleetOps — Monorepo Security & Gateway
+# REFERENCE: Estructura Multidirectorio (api_gateway, auth_service, role_service)
+# =============================================================================
+
+name: CI — Monorepo PR Validation
 
 on:
-  push:
+  pull_request:
+    branches:
+      - main
+      - develop
+    # Ignorar cambios globales que no afectan la ejecución de los servicios
+    paths-ignore:
+      - "**.md"
+      - "docs/**"
+      - ".gitignore"
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHON_VERSION: "3.12"
+  COVERAGE_THRESHOLD: "80"
 
 jobs:
-  saludo:
-    runs-on: ubuntu-latest
+  # ===========================================================================
+  # 1. DETECTOR DE CAMBIOS: Determina qué microservicios fueron modificados
+  # ===========================================================================
+  changes:
+    name: Detect Changed Services
+    runs-on: ubuntu-24.04
+    outputs:
+      services: ${{ steps.filter.outputs.changes }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Check paths
+        id: filter
+        uses: dorny/paths-filter@v3
+        with:
+          # Filtros estrictos basados en tu árbol de directorios
+          filters: |
+            api_gateway: 'api_gateway/**'
+            auth_service: 'auth_service/**'
+            role_service: 'role_service/**'
+
+  # ===========================================================================
+  # 2. QUALITY GATE COMPARTIDO 
+  # ===========================================================================
+  quality-gate:
+    name: Quality Gate — ${{ matrix.service }}
+    needs: changes
+    if: ${{ needs.changes.outputs.services != '[]' && needs.changes.outputs.services != '' }}
+    runs-on: ubuntu-24.04
+    
+    env:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres_secure_password
+      POSTGRES_DB: fleetops_test_db
+      DATABASE_URL: postgresql+asyncpg://postgres:postgres_secure_password@localhost:5432/fleetops_test_db
+      DATABASE_URL_SYNC: postgresql+psycopg2://postgres:postgres_secure_password@localhost:5432/fleetops_test_db
+      JWT_SECRET_KEY: super_secret_key_for_testing_purposes_only
+      REDIS_URL: redis://localhost:6379/0
+      
+    strategy:
+      fail-fast: true
+      matrix:
+        service: ${{ fromJSON(needs.changes.outputs.services) }}
+
+    # Configuración global para que TODOS los comandos corran dentro de la subcarpeta del servicio activo
+    defaults:
+      run:
+        working-directory: ./${{ matrix.service }}
+
+    # Servicios de base de datos aislados para la instancia del runner
+    services:
+      postgres:
+        image: postgres:16.3-alpine3.20
+        env:
+          POSTGRES_USER: "postgres"
+          POSTGRES_PASSWORD: "postgres_secure_password"
+          POSTGRES_DB: "fleetops_test_db"
+        ports:
+          - 5432:5432
+        # options: >-
+        #   # --health-cmd "pg_isready -U postgres"
+        #   # --health-interval 10s
+        #   # --health-timeout 5s
+        #   # --health-retries 5
+
+      redis:
+        image: redis:7.2.5-alpine3.20
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
 
     steps:
-      - name: Mostrar mensaje
-        run: echo "Hola desde GitHub Actions"
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ env.PYTHON_VERSION }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: "pip"
+          # Buscamos el archivo de requerimientos específico de la subcarpeta para la caché
+          cache-dependency-path: ./${{ matrix.service }}/requirements*.txt
+
+      # =======================================================================
+      # INSTALACIÓN DE DEPENDENCIAS 
+      # =======================================================================
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          
+          # 1. Instalar herramientas de calidad globales requeridas por el CI
+          pip install ruff mypy pytest pytest-cov alembic asyncpg
+          
+          # 2. Instalar dependencias del microservicio actual de forma directa
+          if [ -f "requirements-dev.txt" ]; then
+            pip install -r requirements-dev.txt
+          elif [ -f "requirements.txt" ]; then
+            pip install -r requirements.txt
+          elif [ -f "pyproject.toml" ]; then
+            # Si usa pyproject.toml pero es una app, extraemos dependencias o usamos pip directo
+            # Para evitar el error de 'flat-layout', forzamos instalación en modo editable sin compilar wheel completo
+            pip install --no-build-isolation -e . || pip install . --no-deps
+          fi
+
+      # =======================================================================
+      # PASO 1 — ruff (Análisis estático localizado)
+      # =======================================================================
+      - name: "Paso 1 — ruff: Estilo y errores"
+        run: |
+          ruff check . --output-format=github
+          ruff format --check .
+
+      # =======================================================================
+      # PASO 2 — mypy (Tipado estricto localizado)
+      # =======================================================================
+      - name: "Paso 2 — mypy: Verificación de tipos"
+        run: |
+          mypy app \
+            --ignore-missing-imports \
+            --strict \
+            --pretty \
+            --show-error-codes
+
+      # =======================================================================
+      # PASO 3 — pytest (Ejecuta únicamente el /tests de la subcarpeta)
+      # =======================================================================
+      - name: "Paso 3 — pytest: Tests y cobertura"
+        env:
+          DATABASE_URL: "postgresql+asyncpg://postgres:postgres_secure_password@localhost:5432/fleetops_test_db"
+          REDIS_URL: "redis://localhost:6379"
+          JWT_SECRET_KEY: "ci_testing_secret_key_fleetops_security_team"
+          JWT_ALGORITHM: "HS256"
+          JWT_EXPIRATION_MINUTES: "60"
+          APP_ENV: "testing"
+        run: |
+          pytest \
+            --cov=. \
+            --cov-report=term-missing \
+            --cov-report=xml:coverage.xml \
+            --cov-report=html:htmlcov \
+            --cov-fail-under=${{ env.COVERAGE_THRESHOLD }} \
+            --tb=short \
+            -v
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report-${{ matrix.service }}-${{ github.sha }}
+          path: |
+            ./${{ matrix.service }}/coverage.xml
+            ./${{ matrix.service }}/htmlcov/
+          retention-days: 14
+
+      # =======================================================================
+      # PASO 4 — docker build (Usa el Dockerfile interno de la subcarpeta)
+      # =======================================================================
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: "Paso 4 — docker build: Construcción de imagen"
+        uses: docker/build-push-action@v6
+        with:
+          context: ./${{ matrix.service }}
+          file: ./${{ matrix.service }}/${{ env.DOCKERFILE_PATH }}
+          push: false
+          tags: fleetops-${{ matrix.service }}:ci-${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            PYTHON_VERSION=${{ env.PYTHON_VERSION }}

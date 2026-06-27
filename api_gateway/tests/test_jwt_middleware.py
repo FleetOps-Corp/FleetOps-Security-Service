@@ -51,8 +51,8 @@ def _make_token(
 # JWTClaims value object
 # =============================================================================
 
-class TestJWTClaims:
 
+class TestJWTClaims:
     def test_claims_stores_all_fields(self):
         # Arrange & Act
         claims = JWTClaims(user_id="u1", role="ADMINISTRADOR", email="a@b.com")
@@ -74,8 +74,8 @@ class TestJWTClaims:
 # decode_jwt
 # =============================================================================
 
-class TestDecodeJWT:
 
+class TestDecodeJWT:
     def test_valid_token_returns_payload(self):
         # Arrange
         token = _make_token()
@@ -138,8 +138,8 @@ class TestDecodeJWT:
 # extract_claims
 # =============================================================================
 
-class TestExtractClaims:
 
+class TestExtractClaims:
     def test_valid_payload_returns_claims(self):
         # Arrange
         payload = {
@@ -192,8 +192,8 @@ class TestExtractClaims:
 # get_optional_jwt_claims (async dependency)
 # =============================================================================
 
-class TestGetOptionalJWTClaims:
 
+class TestGetOptionalJWTClaims:
     @pytest.mark.asyncio
     async def test_returns_none_when_no_authorization_header(self):
         # Arrange — mock request with no bearer token
@@ -219,11 +219,14 @@ class TestGetOptionalJWTClaims:
         mock_request = MagicMock()
         mock_request.url.path = "/vehiculos/list"
 
-        with patch(
-            "app.middleware.jwt_middleware._bearer_scheme",
-            new_callable=AsyncMock,
-            return_value=mock_credentials,
-        ), patch("app.middleware.jwt_middleware.settings") as mock_settings:
+        with (
+            patch(
+                "app.middleware.jwt_middleware._bearer_scheme",
+                new_callable=AsyncMock,
+                return_value=mock_credentials,
+            ),
+            patch("app.middleware.jwt_middleware.settings") as mock_settings,
+        ):
             mock_settings.jwt_secret_key = TEST_SECRET
             mock_settings.jwt_algorithm = TEST_ALGORITHM
             # Act
@@ -243,11 +246,14 @@ class TestGetOptionalJWTClaims:
         mock_request = MagicMock()
         mock_request.url.path = "/vehiculos"
 
-        with patch(
-            "app.middleware.jwt_middleware._bearer_scheme",
-            new_callable=AsyncMock,
-            return_value=mock_credentials,
-        ), patch("app.middleware.jwt_middleware.settings") as mock_settings:
+        with (
+            patch(
+                "app.middleware.jwt_middleware._bearer_scheme",
+                new_callable=AsyncMock,
+                return_value=mock_credentials,
+            ),
+            patch("app.middleware.jwt_middleware.settings") as mock_settings,
+        ):
             mock_settings.jwt_secret_key = TEST_SECRET
             mock_settings.jwt_algorithm = TEST_ALGORITHM
             # Act & Assert

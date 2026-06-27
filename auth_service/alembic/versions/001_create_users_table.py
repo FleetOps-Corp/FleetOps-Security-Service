@@ -7,8 +7,9 @@ Create Date: 2026-01-01 00:00:00.000000
 SAD Reference: Infrastructure Layer — "Tablas: users" (pág. 5 diagram)
 """
 
-from alembic import op
 import sqlalchemy as sa
+
+from alembic import op
 
 revision = "001"
 down_revision = None

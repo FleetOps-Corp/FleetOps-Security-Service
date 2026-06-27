@@ -13,6 +13,7 @@ from pydantic import BaseModel
 
 class HealthResponse(BaseModel):
     """Health check response DTO."""
+
     status: str
     service: str
     version: str = "1.0.0"
@@ -20,6 +21,7 @@ class HealthResponse(BaseModel):
 
 class ErrorResponse(BaseModel):
     """Standardized error response DTO."""
+
     error: str
     detail: str
     path: str | None = None
@@ -27,6 +29,7 @@ class ErrorResponse(BaseModel):
 
 class GatewayRouteInfo(BaseModel):
     """Route info DTO — used for documentation endpoint."""
+
     prefix: str
     upstream_url_key: str
     allowed_roles: list[str]

@@ -44,6 +44,7 @@ _pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 class _BcryptHasher:
     """Concrete adapter for the PasswordHasher protocol."""
+
     def hash(self, plain_password: str) -> str:
         return cast(str, _pwd_context.hash(plain_password))
 
@@ -61,7 +62,7 @@ _jwt_handler = JWTHandler()
 # Justified by: redis-py best practice for async connection pooling
 # ---------------------------------------------------------------------------
 async def get_redis() -> AsyncGenerator[aioredis.Redis, None]:
-    client = aioredis.from_url( # type: ignore[no-untyped-call]
+    client = aioredis.from_url(  # type: ignore[no-untyped-call]
         f"redis://{settings.redis_host}:{settings.redis_port}",
         password=settings.redis_password or None,
         encoding="utf-8",
@@ -92,6 +93,7 @@ def _make_auth_service(
 # ---------------------------------------------------------------------------
 # Endpoints
 # ---------------------------------------------------------------------------
+
 
 @router.post(
     "/register",

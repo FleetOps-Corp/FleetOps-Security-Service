@@ -22,6 +22,7 @@ from app.domain.user import User, UserRole
 # Concrete adapters live in the infrastructure layer.
 # ---------------------------------------------------------------------------
 
+
 class UserRepository(Protocol):
     """Port: persistence of User entities."""
 
@@ -41,19 +42,23 @@ class PasswordHasher(Protocol):
 # Result value objects
 # ---------------------------------------------------------------------------
 
+
 class AuthError(Exception):
     """Domain exception for authentication failures."""
+
     pass
 
 
 class RegistrationError(Exception):
     """Domain exception for registration failures."""
+
     pass
 
 
 # ---------------------------------------------------------------------------
 # Domain Service
 # ---------------------------------------------------------------------------
+
 
 class AuthDomainService:
     """
@@ -100,9 +105,7 @@ class AuthDomainService:
         email_normalized = email.lower().strip()
 
         if await self._repo.exists_by_email(email_normalized):
-            raise RegistrationError(
-                f"An account with email '{email_normalized}' already exists."
-            )
+            raise RegistrationError(f"An account with email '{email_normalized}' already exists.")
 
         hashed = self._hasher.hash(plain_password)
         user = User.create(
@@ -152,6 +155,6 @@ class AuthDomainService:
 
         return self._jwt.create_token(
             user_id=user.id,
-            role=user.role.value,
+            role=user.role.name,
             email=user.email,
         )

@@ -47,4 +47,4 @@ class GatewaySettings(BaseSettings):
 
 
 # Singleton instance — imported by all modules
-settings: GatewaySettings = GatewaySettings() # type: ignore[call-arg]
+settings: GatewaySettings = GatewaySettings()  # type: ignore[call-arg]

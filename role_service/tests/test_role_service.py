@@ -18,6 +18,7 @@ from app.domain.role_service import RoleAssignmentError, RoleDomainService, Role
 # Fixtures
 # =============================================================================
 
+
 def _make_role(name: str = "EMPLEADO", is_active: bool = True) -> Role:
     return Role(
         id="role-uuid-1",
@@ -60,8 +61,8 @@ def svc(mock_repo) -> RoleDomainService:
 # get_user_roles
 # =============================================================================
 
-class TestGetUserRoles:
 
+class TestGetUserRoles:
     @pytest.mark.asyncio
     async def test_returns_empty_list_when_user_has_no_roles(self, svc, mock_repo):
         mock_repo.find_roles_by_user_id.return_value = []
@@ -88,21 +89,17 @@ class TestGetUserRoles:
 # validate_user_has_any_role
 # =============================================================================
 
-class TestValidateUserHasAnyRole:
 
+class TestValidateUserHasAnyRole:
     @pytest.mark.asyncio
     async def test_returns_true_when_user_has_required_role(self, svc, mock_repo):
-        mock_repo.find_roles_by_user_id.return_value = [
-            _make_assignment(role_name="ADMINISTRADOR")
-        ]
+        mock_repo.find_roles_by_user_id.return_value = [_make_assignment(role_name="ADMINISTRADOR")]
         result = await svc.validate_user_has_any_role("u-1", ["ADMINISTRADOR"])
         assert result is True
 
     @pytest.mark.asyncio
     async def test_returns_false_when_user_lacks_required_role(self, svc, mock_repo):
-        mock_repo.find_roles_by_user_id.return_value = [
-            _make_assignment(role_name="EMPLEADO")
-        ]
+        mock_repo.find_roles_by_user_id.return_value = [_make_assignment(role_name="EMPLEADO")]
         result = await svc.validate_user_has_any_role("u-1", ["ADMINISTRADOR"])
         assert result is False
 
@@ -113,22 +110,14 @@ class TestValidateUserHasAnyRole:
         assert result is True
 
     @pytest.mark.asyncio
-    async def test_returns_true_when_user_has_one_of_multiple_required_roles(
-        self, svc, mock_repo
-    ):
-        mock_repo.find_roles_by_user_id.return_value = [
-            _make_assignment(role_name="EMPLEADO_MANTENIMIENTO")
-        ]
-        result = await svc.validate_user_has_any_role(
-            "u-1", ["ADMINISTRADOR", "EMPLEADO_MANTENIMIENTO"]
-        )
+    async def test_returns_true_when_user_has_one_of_multiple_required_roles(self, svc, mock_repo):
+        mock_repo.find_roles_by_user_id.return_value = [_make_assignment(role_name="EMPLEADO_MANTENIMIENTO")]
+        result = await svc.validate_user_has_any_role("u-1", ["ADMINISTRADOR", "EMPLEADO_MANTENIMIENTO"])
         assert result is True
 
     @pytest.mark.asyncio
     async def test_comparison_is_case_insensitive(self, svc, mock_repo):
-        mock_repo.find_roles_by_user_id.return_value = [
-            _make_assignment(role_name="ADMINISTRADOR")
-        ]
+        mock_repo.find_roles_by_user_id.return_value = [_make_assignment(role_name="ADMINISTRADOR")]
         result = await svc.validate_user_has_any_role("u-1", ["administrador"])
         assert result is True
 
@@ -137,22 +126,18 @@ class TestValidateUserHasAnyRole:
 # assign_role
 # =============================================================================
 
-class TestAssignRole:
 
+class TestAssignRole:
     @pytest.mark.asyncio
     async def test_assign_role_returns_assignment(self, svc, mock_repo):
         role = _make_role(name="EMPLEADO_MANTENIMIENTO", is_active=True)
         mock_repo.find_role_by_name.return_value = role
-        mock_repo.assign_role_to_user.return_value = _make_assignment(
-            role_name="EMPLEADO_MANTENIMIENTO"
-        )
+        mock_repo.assign_role_to_user.return_value = _make_assignment(role_name="EMPLEADO_MANTENIMIENTO")
         result = await svc.assign_role("u-1", "EMPLEADO_MANTENIMIENTO", "admin-1")
         assert isinstance(result, UserRoleAssignment)
 
     @pytest.mark.asyncio
-    async def test_assign_raises_role_not_found_when_role_missing(
-        self, svc, mock_repo
-    ):
+    async def test_assign_raises_role_not_found_when_role_missing(self, svc, mock_repo):
         mock_repo.find_role_by_name.return_value = None
         with pytest.raises(RoleNotFoundError) as exc_info:
             await svc.assign_role("u-1", "NONEXISTENT_ROLE")
@@ -167,9 +152,7 @@ class TestAssignRole:
         assert "disabled" in str(exc_info.value).lower()
 
     @pytest.mark.asyncio
-    async def test_assign_calls_repo_with_correct_user_and_role(
-        self, svc, mock_repo
-    ):
+    async def test_assign_calls_repo_with_correct_user_and_role(self, svc, mock_repo):
         role = _make_role(name="ADMINISTRADOR", is_active=True)
         mock_repo.find_role_by_name.return_value = role
         assignment = _make_assignment(user_id="u-99", role_name="ADMINISTRADOR")
@@ -182,8 +165,8 @@ class TestAssignRole:
 # remove_role
 # =============================================================================
 
-class TestRemoveRole:
 
+class TestRemoveRole:
     @pytest.mark.asyncio
     async def test_remove_role_returns_true_on_success(self, svc, mock_repo):
         mock_repo.remove_role_from_user.return_value = True
@@ -191,9 +174,7 @@ class TestRemoveRole:
         assert result is True
 
     @pytest.mark.asyncio
-    async def test_remove_role_raises_not_found_when_not_assigned(
-        self, svc, mock_repo
-    ):
+    async def test_remove_role_raises_not_found_when_not_assigned(self, svc, mock_repo):
         mock_repo.remove_role_from_user.return_value = False
         with pytest.raises(RoleNotFoundError) as exc_info:
             await svc.remove_role("u-1", "EMPLEADO")

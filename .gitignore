@@ -24,6 +24,9 @@ env/
 coverage.xml
 htmlcov/
 .tox/
+/run.ps1
+.env.act
+/event.json
 
 # IDE
 .vscode/
@@ -41,3 +44,6 @@ logs/
 # OS
 .DS_Store
 Thumbs.db
+
+# Seed admin
+/auth_service/app/seed_admin.py

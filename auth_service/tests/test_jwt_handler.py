@@ -35,8 +35,8 @@ def handler() -> JWTHandler:
 # JWTHandler.create_token
 # =============================================================================
 
-class TestCreateToken:
 
+class TestCreateToken:
     def test_create_token_returns_non_empty_string(self, handler: JWTHandler):
         # Act
         token = handler.create_token("u-1", "EMPLEADO", "e@f.com")
@@ -95,8 +95,8 @@ class TestCreateToken:
 # JWTHandler.decode_token
 # =============================================================================
 
-class TestDecodeToken:
 
+class TestDecodeToken:
     def _make_raw_token(
         self,
         sub: str = "u-1",
@@ -144,18 +144,14 @@ class TestDecodeToken:
         assert isinstance(result.expires_at, datetime)
         assert result.expires_at.tzinfo is not None
 
-    def test_decode_expired_token_raises_expired_signature_error(
-        self, handler: JWTHandler
-    ):
+    def test_decode_expired_token_raises_expired_signature_error(self, handler: JWTHandler):
         # Arrange — token expired 1 second ago
         token = self._make_raw_token(expire_offset_seconds=-1)
         # Act & Assert
         with pytest.raises(jwt.ExpiredSignatureError):
             handler.decode_token(token)
 
-    def test_decode_tampered_token_raises_invalid_token_error(
-        self, handler: JWTHandler
-    ):
+    def test_decode_tampered_token_raises_invalid_token_error(self, handler: JWTHandler):
         # Arrange — signed with wrong secret
         token = jwt.encode(
             {"sub": "u", "role": "EMPLEADO", "exp": time.time() + 3600},
