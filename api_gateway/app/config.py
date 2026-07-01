@@ -31,19 +31,19 @@ class GatewaySettings(BaseSettings):
     role_service_url: str
 
     # --- Downstream microservice URLs (placeholders — SAD §3) ---
-    vehicles_service_url: str = "http://vehicles_service:8010"
-    assignments_service_url: str = "http://assignments_service:8020"
-    incidents_service_url: str = "http://incidents-service:8030"
-    maintenance_service_url: str = "http://maintenance_service:8040"
-    reports_service_url: str = "http://reports_service:8050"
+    vehicles_service_url: str
+    assignments_service_url: str
+    incidents_service_url: str
+    maintenance_service_url: str
+    reports_service_url: str
 
     # --- Rate Limiting (SAD §6/7: efficiency tactic) ---
-    gateway_rate_limit: int = 60  # requests per minute per client IP
+    gateway_rate_limit: int # requests per minute per client IP
 
     # --- Server ---
-    gateway_port: int = 8000
-    log_level: str = "INFO"
-    app_env: str = "development"
+    gateway_port: int
+    log_level: str
+    app_env: str
 
 
 # Singleton instance — imported by all modules
