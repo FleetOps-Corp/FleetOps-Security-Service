@@ -38,7 +38,7 @@ class GatewaySettings(BaseSettings):
     reports_service_url: str
 
     # --- Rate Limiting (SAD §6/7: efficiency tactic) ---
-    gateway_rate_limit: int # requests per minute per client IP
+    gateway_rate_limit: int  # requests per minute per client IP
 
     # --- Server ---
     gateway_port: int
