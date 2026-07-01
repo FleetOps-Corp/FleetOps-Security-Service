@@ -33,7 +33,7 @@ class GatewaySettings(BaseSettings):
     # --- Downstream microservice URLs (placeholders — SAD §3) ---
     vehicles_service_url: str = "http://vehicles_service:8010"
     assignments_service_url: str = "http://assignments_service:8020"
-    incidents_service_url: str = "http://incidents_service:8030"
+    incidents_service_url: str = "http://incidents-service:8030"
     maintenance_service_url: str = "http://maintenance_service:8040"
     reports_service_url: str = "http://reports_service:8050"
 
