@@ -24,7 +24,7 @@ class GatewaySettings(BaseSettings):
 
     # --- JWT (SAD §7: confidentiality — session token) ---
     jwt_secret_key: str
-    jwt_algorithm: str = "HS256"
+    jwt_algorithm: str
 
     # --- Internal service URLs (SAD §3: route dictionary) ---
     auth_service_url: str
@@ -36,6 +36,13 @@ class GatewaySettings(BaseSettings):
     incidents_service_url: str
     maintenance_service_url: str
     reports_service_url: str
+
+    # --- Downstream microservice URLs (placeholders — SAD §3) ---
+    vehicles_service_prefix: str
+    assignments_service_prefix: str
+    incidents_service_prefix: str
+    maintenance_service_prefix: str
+    reports_service_prefix: str
 
     # --- Rate Limiting (SAD §6/7: efficiency tactic) ---
     gateway_rate_limit: int  # requests per minute per client IP

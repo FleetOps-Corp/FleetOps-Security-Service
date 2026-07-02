@@ -19,6 +19,7 @@ Architecture note: The route registry lives in the Domain layer because
 it encodes business authorization rules, not infrastructure concerns.
 """
 
+from app.config import settings
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Optional
@@ -119,7 +120,7 @@ class RouteRegistry:
             #         Administrador accede para generar informes estratégicos.
             # ------------------------------------------------------------------
             RouteEntry(
-                prefix="/vehiculos",
+                prefix=settings.vehicles_service_prefix,
                 upstream_url_key="vehicles_service_url",
                 allowed_roles=frozenset(
                     {
@@ -135,7 +136,7 @@ class RouteRegistry:
             # SAD §1: Empleado accede a sus asignaciones (ruta + vehículo).
             # ------------------------------------------------------------------
             RouteEntry(
-                prefix="/asignaciones",
+                prefix=settings.assignments_service_prefix,
                 upstream_url_key="assignments_service_url",
                 allowed_roles=frozenset(
                     {
@@ -150,7 +151,7 @@ class RouteRegistry:
             # SAD §1: Empleado de incidentes gestiona incidentes mecánicos o humanos.
             # ------------------------------------------------------------------
             RouteEntry(
-                prefix="/api/incidents",
+                prefix=settings.incidents_service_prefix,
                 upstream_url_key="incidents_service_url",
                 allowed_roles=frozenset(
                     {
@@ -165,7 +166,7 @@ class RouteRegistry:
             # SAD §1: Empleado de mantenimiento accede a info de mantenimiento.
             # ------------------------------------------------------------------
             RouteEntry(
-                prefix="/mantenimiento",
+                prefix=settings.maintenance_service_prefix,
                 upstream_url_key="maintenance_service_url",
                 allowed_roles=frozenset(
                     {
@@ -180,7 +181,7 @@ class RouteRegistry:
             # SAD §1: Administrador genera informes estratégicos.
             # ------------------------------------------------------------------
             RouteEntry(
-                prefix="/reportes",
+                prefix=settings.reports_service_prefix,
                 upstream_url_key="reports_service_url",
                 allowed_roles=frozenset(
                     {

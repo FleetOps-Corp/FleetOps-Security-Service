@@ -8,6 +8,7 @@ SAD Reference: Route dictionary (§3), RBAC roles (§1)
 No infrastructure dependencies — pure domain tests.
 """
 
+from app.config import settings
 import pytest
 
 from app.domain.route_registry import Role, RouteEntry, RouteRegistry
@@ -35,7 +36,7 @@ class TestRouteEntry:
     def test_is_public_returns_false_when_roles_present(self):
         # Arrange
         entry = RouteEntry(
-            prefix="/vehiculos",
+            prefix=settings.vehicles_service_prefix,
             upstream_url_key="vehicles_service_url",
             allowed_roles=frozenset({Role.ADMINISTRADOR}),
         )
@@ -47,7 +48,7 @@ class TestRouteEntry:
     def test_allows_role_returns_true_for_permitted_role(self):
         # Arrange
         entry = RouteEntry(
-            prefix="/vehiculos",
+            prefix=settings.vehicles_service_prefix,
             upstream_url_key="vehicles_service_url",
             allowed_roles=frozenset({Role.ADMINISTRADOR, Role.EMPLEADO_MANTENIMIENTO}),
         )
@@ -58,7 +59,7 @@ class TestRouteEntry:
     def test_allows_role_returns_false_for_unpermitted_role(self):
         # Arrange
         entry = RouteEntry(
-            prefix="/vehiculos",
+            prefix=settings.vehicles_service_prefix,
             upstream_url_key="vehicles_service_url",
             allowed_roles=frozenset({Role.ADMINISTRADOR}),
         )
@@ -70,7 +71,7 @@ class TestRouteEntry:
     def test_allows_role_is_case_insensitive(self):
         # Arrange
         entry = RouteEntry(
-            prefix="/reportes",
+            prefix=settings.reports_service_prefix,
             upstream_url_key="reports_service_url",
             allowed_roles=frozenset({Role.ADMINISTRADOR}),
         )
@@ -82,7 +83,7 @@ class TestRouteEntry:
     def test_allows_role_returns_false_for_unknown_role(self):
         # Arrange
         entry = RouteEntry(
-            prefix="/reportes",
+            prefix=settings.reports_service_prefix,
             upstream_url_key="reports_service_url",
             allowed_roles=frozenset({Role.ADMINISTRADOR}),
         )
@@ -94,7 +95,7 @@ class TestRouteEntry:
     def test_route_entry_is_immutable(self):
         # Arrange
         entry = RouteEntry(
-            prefix="/vehiculos",
+            prefix=settings.vehicles_service_prefix,
             upstream_url_key="vehicles_service_url",
             allowed_roles=frozenset({Role.ADMINISTRADOR}),
         )
@@ -126,7 +127,7 @@ class TestRouteRegistry:
         result = self.registry.find_route(path)
         # Assert
         assert result is not None
-        assert result.prefix == "/auth"
+        assert result.prefix == settings.auth_service_prefix
 
     def test_find_route_returns_none_for_unknown_path(self):
         # Arrange
