@@ -10,4 +10,4 @@ echo "[entrypoint] Running Alembic migrations..."
 alembic upgrade head
 
 echo "[entrypoint] Starting Auth Service on port ${AUTH_SERVICE_PORT:-8001}..."
-exec uvicorn app.main:app --host 0.0.0.0 --port "${AUTH_SERVICE_PORT:-8001}" --workers 1
+exec uvicorn app.main:app --host 0.0.0.0 --port "${AUTH_SERVICE_PORT:-8001}" --workers 1 --ssl-certfile "${TLS_CERT_PATH}" --ssl-keyfile "${TLS_KEY_PATH}"
