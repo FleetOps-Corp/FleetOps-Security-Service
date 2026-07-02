@@ -30,6 +30,7 @@ class AuthSettings(BaseSettings):
     jwt_secret_key: str
     jwt_algorithm: str = "HS256"
     jwt_expiration_minutes: int = 60
+    jwt_refresh_expiration_minutes: int = 10080
 
     # --- Server ---
     auth_service_port: int = 8001

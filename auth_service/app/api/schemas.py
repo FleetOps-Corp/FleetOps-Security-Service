@@ -44,13 +44,20 @@ class LoginRequest(BaseModel):
     password: str = Field(..., min_length=1, description="Account password")
 
 
+class RefreshTokenRequest(BaseModel):
+    """DTO for POST /refresh."""
+
+    refresh_token: str = Field(..., min_length=1, description="Refresh token issued during login")
+
+
 class TokenResponse(BaseModel):
     """
-    DTO returned on successful login.
+    DTO returned on successful login or refresh.
     SAD §3 flow step 6: "El token es devuelto al usuario."
     """
 
     access_token: str = Field(..., description="Signed JWT — include as Bearer token in subsequent requests")
+    refresh_token: str | None = Field(default=None, description="Refresh token used to obtain a new access token")
     token_type: str = Field(default="bearer", description="Always 'bearer'")
     expires_in: int = Field(..., description="Token lifetime in seconds")
 

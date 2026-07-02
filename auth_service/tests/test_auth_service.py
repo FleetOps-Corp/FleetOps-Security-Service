@@ -13,7 +13,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from app.domain.auth_service import AuthDomainService, AuthError, RegistrationError
+from app.domain.auth_service import AuthDomainService, AuthError, RegistrationError, TokenPair
 from app.domain.jwt_handler import JWTHandler
 from app.domain.user import User, UserRole
 
@@ -179,7 +179,7 @@ class TestRegister:
 
 class TestLogin:
     @pytest.mark.asyncio
-    async def test_login_returns_jwt_string(self, auth_service, mock_repo, mock_hasher):
+    async def test_login_returns_token_pair_with_access_and_refresh_tokens(self, auth_service, mock_repo, mock_hasher):
         # Arrange
         user = _make_user(email="emp@fleet.com", is_active=True)
         mock_repo.find_by_email.return_value = user
@@ -187,8 +187,23 @@ class TestLogin:
         # Act
         result = await auth_service.login("emp@fleet.com", "password123")
         # Assert
-        assert isinstance(result, str)
-        assert result.count(".") == 2  # valid JWT has 3 segments
+        assert isinstance(result, TokenPair)
+        assert result.access_token.count(".") == 2
+        assert result.refresh_token.count(".") == 2
+
+    @pytest.mark.asyncio
+    async def test_refresh_access_token_returns_new_access_token(self, auth_service, mock_repo, mock_hasher):
+        # Arrange
+        user = _make_user(email="emp@fleet.com", is_active=True)
+        mock_repo.find_by_email.return_value = user
+        mock_repo.find_by_id.return_value = user
+        mock_hasher.verify.return_value = True
+        tokens = await auth_service.login("emp@fleet.com", "password123")
+        # Act
+        refreshed = await auth_service.refresh_access_token(tokens.refresh_token)
+        # Assert
+        assert isinstance(refreshed, str)
+        assert refreshed.count(".") == 2
 
     @pytest.mark.asyncio
     async def test_login_raises_auth_error_when_user_not_found(self, auth_service, mock_repo):
@@ -241,11 +256,11 @@ class TestLogin:
         mock_repo.find_by_email.return_value = user
         mock_hasher.verify.return_value = True
         # Act
-        token = await auth_service.login("emp@fleet.com", "pass")
+        result = await auth_service.login("emp@fleet.com", "pass")
         # Assert
         import jwt as pyjwt
 
-        payload = pyjwt.decode(token, TEST_SECRET, algorithms=[TEST_ALGORITHM])
+        payload = pyjwt.decode(result.access_token, TEST_SECRET, algorithms=[TEST_ALGORITHM])
         assert payload["sub"] == user_id
 
     @pytest.mark.asyncio
@@ -255,9 +270,9 @@ class TestLogin:
         mock_repo.find_by_email.return_value = user
         mock_hasher.verify.return_value = True
         # Act
-        token = await auth_service.login("emp@fleet.com", "pass")
+        result = await auth_service.login("emp@fleet.com", "pass")
         # Assert
         import jwt as pyjwt
 
-        payload = pyjwt.decode(token, TEST_SECRET, algorithms=[TEST_ALGORITHM])
+        payload = pyjwt.decode(result.access_token, TEST_SECRET, algorithms=[TEST_ALGORITHM])
         assert payload["role"] == "ADMINISTRADOR"
