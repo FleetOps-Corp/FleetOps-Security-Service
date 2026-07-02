@@ -16,6 +16,7 @@ class RegisterRequest(BaseModel):
     DTO for POST /register.
     SAD §3: new users register via this endpoint.
     """
+
     email: EmailStr = Field(..., description="Valid email address")
     password: str = Field(
         ...,
@@ -38,6 +39,7 @@ class RegisterRequest(BaseModel):
 
 class LoginRequest(BaseModel):
     """DTO for POST /login."""
+
     email: EmailStr = Field(..., description="Registered email address")
     password: str = Field(..., min_length=1, description="Account password")
 
@@ -47,6 +49,7 @@ class TokenResponse(BaseModel):
     DTO returned on successful login.
     SAD §3 flow step 6: "El token es devuelto al usuario."
     """
+
     access_token: str = Field(..., description="Signed JWT — include as Bearer token in subsequent requests")
     token_type: str = Field(default="bearer", description="Always 'bearer'")
     expires_in: int = Field(..., description="Token lifetime in seconds")
@@ -54,6 +57,7 @@ class TokenResponse(BaseModel):
 
 class UserResponse(BaseModel):
     """DTO returned on successful registration — excludes sensitive fields."""
+
     id: str
     email: str
     role: str
@@ -62,12 +66,14 @@ class UserResponse(BaseModel):
 
 class ErrorResponse(BaseModel):
     """Standardized error response."""
+
     error: str
     detail: str
 
 
 class HealthResponse(BaseModel):
     """Health check response."""
+
     status: str
     service: str
     version: str = "1.0.0"

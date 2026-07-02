@@ -29,6 +29,7 @@ class JWTClaims:
     Value object holding the decoded, validated claims from a JWT.
     Stored in request.state.jwt_claims after middleware processing.
     """
+
     def __init__(self, user_id: str, role: str, email: str) -> None:
         self.user_id = user_id
         self.role = role

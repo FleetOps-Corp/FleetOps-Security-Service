@@ -9,7 +9,6 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class AuthSettings(BaseSettings):
-
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
@@ -38,4 +37,4 @@ class AuthSettings(BaseSettings):
     app_env: str = "development"
 
 
-settings = AuthSettings() # type: ignore[call-arg]
+settings = AuthSettings()  # type: ignore[call-arg]

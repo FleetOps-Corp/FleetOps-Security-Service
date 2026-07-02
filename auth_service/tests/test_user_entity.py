@@ -17,8 +17,8 @@ from app.domain.user import User, UserRole
 # UserRole enum
 # =============================================================================
 
-class TestUserRole:
 
+class TestUserRole:
     def test_default_role_is_empleado(self):
         # SAD §3: new users receive EMPLEADO role by default (team agreement)
         assert UserRole.default() == UserRole.EMPLEADO
@@ -42,8 +42,8 @@ class TestUserRole:
 # User.create factory
 # =============================================================================
 
-class TestUserCreate:
 
+class TestUserCreate:
     def test_create_generates_uuid_id(self):
         # Arrange & Act
         user = User.create(email="test@fleetops.com", hashed_password="hashed_pw")
@@ -101,8 +101,8 @@ class TestUserCreate:
 # User.is_password_correct
 # =============================================================================
 
-class TestUserIsPasswordCorrect:
 
+class TestUserIsPasswordCorrect:
     def _make_user(self, is_active: bool = True) -> User:
         return User(
             id="uuid-1",
@@ -159,8 +159,8 @@ class TestUserIsPasswordCorrect:
 # User.deactivate
 # =============================================================================
 
-class TestUserDeactivate:
 
+class TestUserDeactivate:
     def test_deactivate_sets_is_active_to_false(self):
         # Arrange
         user = User.create(email="a@fleetops.com", hashed_password="h")

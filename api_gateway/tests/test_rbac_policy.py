@@ -30,8 +30,8 @@ def policy(registry: RouteRegistry) -> RBACPolicy:
 # AuthorizationResult value object tests
 # =============================================================================
 
-class TestAuthorizationResult:
 
+class TestAuthorizationResult:
     def test_authorized_result_has_correct_flags(self):
         # Arrange & Act
         result = AuthorizationResult(authorized=True, reason="ok")
@@ -51,8 +51,8 @@ class TestAuthorizationResult:
 # RBACPolicy.evaluate — all branches
 # =============================================================================
 
-class TestRBACPolicyEvaluate:
 
+class TestRBACPolicyEvaluate:
     # -------------------------------------------------------------------------
     # Branch 1: Route not found
     # -------------------------------------------------------------------------
@@ -107,9 +107,7 @@ class TestRBACPolicyEvaluate:
         assert result.authorized is False
         assert "Authentication required" in result.reason
 
-    def test_evaluate_protected_route_with_none_role_returns_route_entry(
-        self, policy: RBACPolicy
-    ):
+    def test_evaluate_protected_route_with_none_role_returns_route_entry(self, policy: RBACPolicy):
         # Act
         result = policy.evaluate(path="/reportes/q1", user_role=None)
         # Assert — route_entry is returned even when denied, for error handling
@@ -153,9 +151,7 @@ class TestRBACPolicyEvaluate:
         # Assert
         assert result.authorized is True
 
-    def test_evaluate_empleado_mantenimiento_can_access_mantenimiento(
-        self, policy: RBACPolicy
-    ):
+    def test_evaluate_empleado_mantenimiento_can_access_mantenimiento(self, policy: RBACPolicy):
         # Act
         result = policy.evaluate(
             path="/mantenimiento/preventive/schedule",
@@ -194,9 +190,7 @@ class TestRBACPolicyEvaluate:
         # Assert
         assert result.authorized is False
 
-    def test_evaluate_empleado_mantenimiento_cannot_access_incidentes(
-        self, policy: RBACPolicy
-    ):
+    def test_evaluate_empleado_mantenimiento_cannot_access_incidentes(self, policy: RBACPolicy):
         # Arrange — maintenance employee cannot manage incidents
         result = policy.evaluate(
             path="/incidentes/list",
@@ -205,9 +199,7 @@ class TestRBACPolicyEvaluate:
         # Assert
         assert result.authorized is False
 
-    def test_evaluate_empleado_incidentes_cannot_access_mantenimiento(
-        self, policy: RBACPolicy
-    ):
+    def test_evaluate_empleado_incidentes_cannot_access_mantenimiento(self, policy: RBACPolicy):
         result = policy.evaluate(
             path="/mantenimiento/history",
             user_role=Role.EMPLEADO_INCIDENTES.value,

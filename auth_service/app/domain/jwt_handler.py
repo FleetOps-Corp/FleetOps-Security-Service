@@ -26,6 +26,7 @@ class TokenPayload:
     Value object representing the data encoded inside a JWT.
     SAD §7: sub (user_id), role, email + exp claim.
     """
+
     user_id: str
     role: str
     email: str

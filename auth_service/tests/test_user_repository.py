@@ -23,6 +23,7 @@ from app.infrastructure.user_repository import UserRepository
 # Helpers
 # =============================================================================
 
+
 def _make_user_model(
     email: str = "emp@fleet.com",
     role: str = "EMPLEADO",
@@ -32,7 +33,11 @@ def _make_user_model(
     model.id = "model-uuid-1"
     model.email = email
     model.hashed_password = "$bcrypt$hash"
-    model.role = role
+
+    mock_role_relation = MagicMock()
+    mock_role_relation.name = role
+    model.role = mock_role_relation
+
     model.is_active = is_active
     model.created_at = datetime.now(timezone.utc)
     model.updated_at = datetime.now(timezone.utc)
@@ -70,8 +75,8 @@ def _make_repo(
 # _to_domain (static — tested indirectly via find_by_email)
 # =============================================================================
 
-class TestToDomain:
 
+class TestToDomain:
     def test_to_domain_maps_all_fields_correctly(self):
         # Arrange
         model = _make_user_model(email="x@y.com", role="ADMINISTRADOR", is_active=True)
@@ -94,8 +99,8 @@ class TestToDomain:
 # find_by_email
 # =============================================================================
 
-class TestFindByEmail:
 
+class TestFindByEmail:
     @pytest.mark.asyncio
     async def test_returns_user_from_redis_cache_on_hit(self):
         # Arrange — Redis returns cached JSON
@@ -201,15 +206,15 @@ class TestFindByEmail:
 # save
 # =============================================================================
 
-class TestSave:
 
+class TestSave:
     @pytest.mark.asyncio
     async def test_save_adds_model_to_session(self):
         # Arrange
         session = AsyncMock()
         session.add = MagicMock()
         session.flush = AsyncMock()
-        
+
         repo = _make_repo(session=session)
         user = _make_domain_user()
         # Act
@@ -237,8 +242,8 @@ class TestSave:
 # exists_by_email
 # =============================================================================
 
-class TestExistsByEmail:
 
+class TestExistsByEmail:
     @pytest.mark.asyncio
     async def test_returns_true_when_user_exists(self):
         # Arrange

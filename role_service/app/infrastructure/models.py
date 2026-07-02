@@ -14,8 +14,18 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.infrastructure.database import Base
 
 
+class User(Base):
+    """Reflejo de la tabla 'users' para permitir actualizaciones de rol desde el role_service."""
+
+    __tablename__ = "users"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    role_id: Mapped[str] = mapped_column(String(36), nullable=False)
+
+
 class RoleModel(Base):
     """Catalog of system roles. Seeded by the Alembic migration."""
+
     __tablename__ = "roles"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
@@ -41,10 +51,9 @@ class RoleModel(Base):
 
 class UserRoleModel(Base):
     """Assignment of a role to a user — administered exclusively by admins (SAD §3)."""
+
     __tablename__ = "user_roles"
-    __table_args__ = (
-        UniqueConstraint("user_id", "role_id", name="uq_user_role"),
-    )
+    __table_args__ = (UniqueConstraint("user_id", "role_id", name="uq_user_role"),)
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     user_id: Mapped[str] = mapped_column(String(36), nullable=False, index=True)

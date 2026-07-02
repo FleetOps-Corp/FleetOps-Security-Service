@@ -4,7 +4,6 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class RoleSettings(BaseSettings):
-
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
@@ -25,4 +24,4 @@ class RoleSettings(BaseSettings):
     app_env: str = "development"
 
 
-settings = RoleSettings() # type: ignore[call-arg]
+settings = RoleSettings()  # type: ignore[call-arg]

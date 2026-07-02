@@ -67,7 +67,9 @@ async def validate_role(
 
     logger.info(
         "Role validation | user_id=%s | required=%s | authorized=%s",
-        body.user_id, body.required_roles, authorized,
+        body.user_id,
+        body.required_roles,
+        authorized,
     )
     return RoleValidationResponse(
         authorized=authorized,
@@ -101,7 +103,9 @@ async def assign_role(
         )
         logger.info(
             "Role assigned | user_id=%s | role=%s | by=%s",
-            body.user_id, body.role_name, body.assigned_by,
+            body.user_id,
+            body.role_name,
+            body.assigned_by,
         )
         return RoleAssignResponse(
             assignment_id=assignment.id,

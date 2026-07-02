@@ -16,6 +16,7 @@ from app.domain.route_registry import Role, RouteEntry, RouteRegistry
 # RouteEntry tests
 # =============================================================================
 
+
 class TestRouteEntry:
     """Tests for the RouteEntry value object."""
 
@@ -105,6 +106,7 @@ class TestRouteEntry:
 # =============================================================================
 # RouteRegistry tests
 # =============================================================================
+
 
 class TestRouteRegistry:
     """Tests for the RouteRegistry domain service."""

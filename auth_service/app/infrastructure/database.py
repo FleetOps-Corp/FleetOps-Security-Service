@@ -40,6 +40,7 @@ class Base(DeclarativeBase):
     Declarative base for all ORM models in the Auth Service.
     Shared with alembic/env.py for schema detection.
     """
+
     pass
 
 

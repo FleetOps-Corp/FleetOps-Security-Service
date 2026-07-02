@@ -38,10 +38,7 @@ async def _proxy_to_auth(request: Request, path: str) -> Response:
     """
     target_url = f"{settings.auth_service_url}{path}"
     body = await request.body()
-    headers = {
-        k: v for k, v in request.headers.items()
-        if k.lower() not in ("host", "content-length")
-    }
+    headers = {k: v for k, v in request.headers.items() if k.lower() not in ("host", "content-length")}
 
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:

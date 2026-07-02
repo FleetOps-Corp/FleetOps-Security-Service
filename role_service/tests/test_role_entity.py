@@ -11,7 +11,6 @@ from app.domain.role import Role, RoleName, UserRoleAssignment
 
 
 class TestRoleName:
-
     def test_all_four_roles_exist(self):
         names = {r.value for r in RoleName}
         assert names == {
@@ -26,7 +25,6 @@ class TestRoleName:
 
 
 class TestRole:
-
     def test_create_generates_uuid_id(self):
         role = Role.create("EMPLEADO", "Basic employee")
         assert len(role.id) == 36
@@ -65,11 +63,8 @@ class TestRole:
 
 
 class TestUserRoleAssignment:
-
     def test_create_generates_uuid_id(self):
-        assignment = UserRoleAssignment.create(
-            user_id="u-1", role_id="r-1", role_name="EMPLEADO"
-        )
+        assignment = UserRoleAssignment.create(user_id="u-1", role_id="r-1", role_name="EMPLEADO")
         assert len(assignment.id) == 36
 
     def test_create_stores_all_fields(self):
@@ -85,14 +80,10 @@ class TestUserRoleAssignment:
         assert assignment.assigned_by == "admin-99"
 
     def test_create_with_no_assigned_by_defaults_to_none(self):
-        assignment = UserRoleAssignment.create(
-            user_id="u-1", role_id="r-1", role_name="EMPLEADO"
-        )
+        assignment = UserRoleAssignment.create(user_id="u-1", role_id="r-1", role_name="EMPLEADO")
         assert assignment.assigned_by is None
 
     def test_create_sets_assigned_at_timestamp(self):
-        assignment = UserRoleAssignment.create(
-            user_id="u-1", role_id="r-1", role_name="EMPLEADO"
-        )
+        assignment = UserRoleAssignment.create(user_id="u-1", role_id="r-1", role_name="EMPLEADO")
         assert assignment.assigned_at is not None
         assert isinstance(assignment.assigned_at, datetime)

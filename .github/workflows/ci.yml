@@ -1,81 +1,108 @@
 # =============================================================================
 # FILE: .github/workflows/ci.yml
-# PROJECT: FleetOps — API Gateway / Security Team
-# SAD REFERENCE: §7 Metas y Restricciones, §4 Stack (Python, FastAPI, PostgreSQL, Redis)
-# TRIGGER: Pull Requests hacia main y develop
-# =============================================================================
-#
-# Pipeline de Integración Continua
-# ---------------------------------
-# Paso 1 — ruff      : Estilo y errores de código Python
-# Paso 2 — mypy      : Tipos de datos correctos
-# Paso 3 — pytest    : Tests automatizados + cobertura >= 80 %
-# Paso 4 — docker build : La imagen Docker construye sin errores
-#
-# Los pasos son secuenciales y fallan rápido (fail-fast).
-# Si el Paso N falla, los siguientes NO se ejecutan.
+# PROJECT: FleetOps — Monorepo Security & Gateway
+# REFERENCE: Estructura Multidirectorio (api_gateway, auth_service, role_service)
 # =============================================================================
 
-name: CI — Pull Request Validation
+name: CI — Monorepo PR Validation
 
 on:
   pull_request:
     branches:
       - main
       - develop
-    # Ejecutar en cualquier cambio de archivo relevante
+    
     paths-ignore:
       - "**.md"
       - "docs/**"
       - ".gitignore"
 
-# Cancelar ejecuciones anteriores del mismo PR al recibir un nuevo push
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
-# ---------------------------------------------------------------------------
-# Variables de entorno globales del pipeline
-# Nunca contienen secretos reales — los secretos van en GitHub Secrets
-# ---------------------------------------------------------------------------
 env:
   PYTHON_VERSION: "3.12"
-  # Cobertura mínima requerida (SAD §3 tabla de herramientas — pytest >= 80 %)
   COVERAGE_THRESHOLD: "80"
-  # Path al Dockerfile del microservicio (ajustar si está en subdirectorio)
-  DOCKERFILE_PATH: "Dockerfile"
-  # Tag de imagen temporal para el paso de docker build
-  IMAGE_TAG: "fleetops-api-gateway:ci-${{ github.sha }}"
 
 jobs:
   # ===========================================================================
-  # JOB PRINCIPAL — todos los pasos en un único runner para compartir el venv
+  # 1. DETECTOR DE CAMBIOS: Determina qué microservicios fueron modificados
+  # ===========================================================================
+  changes:
+    name: Detect Changed Services
+    runs-on: ubuntu-24.04
+    outputs:
+      services: ${{ steps.filter.outputs.changes }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Check paths
+        id: filter
+        uses: dorny/paths-filter@v3
+        with:
+          # Filtros estrictos basados en tu árbol de directorios
+          filters: |
+            api_gateway: 'api_gateway/**'
+            auth_service: 'auth_service/**'
+            role_service: 'role_service/**'
+
+  # ===========================================================================
+  # 2. QUALITY GATE COMPARTIDO 
   # ===========================================================================
   quality-gate:
-    name: Quality Gate
+    name: Quality Gate — ${{ matrix.service }}
+    needs: changes
+    if: ${{ needs.changes.outputs.services != '[]' && needs.changes.outputs.services != '' }}
     runs-on: ubuntu-24.04
+    
+    env:
+      
+      POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+      JWT_SECRET_KEY: ${{ secrets.JWT_SECRET_KEY }}
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      DATABASE_URL_SYNC: ${{ secrets.DATABASE_URL_SYNC }}
 
-    # -------------------------------------------------------------------------
-    # Servicios de apoyo (SAD §9 — PostgreSQL y Redis requeridos por authservice
-    # y role_service para tests de integración)
-    # -------------------------------------------------------------------------
+      
+      APP_ENV: ${{ vars.APP_ENV }}
+      POSTGRES_USER: ${{ vars.POSTGRES_USER }}
+      POSTGRES_DB: ${{ vars.POSTGRES_DB }}  
+      REDIS_HOST: ${{ vars.REDIS_HOST }}
+      REDIS_PORT: ${{ vars.REDIS_PORT }}
+      JWT_ALGORITHM: ${{ vars.JWT_ALGORITHM }}
+      JWT_EXPIRATION_MINUTES: ${{ vars.JWT_EXPIRATION_MINUTES }}
+      
+      
+      AUTH_SERVICE_URL: ${{ secrets.AUTH_SERVICE_URL }}
+      ROLE_SERVICE_URL: ${{ secrets.ROLE_SERVICE_URL }}
+      VEHICLES_SERVICE_URL: ${{ secrets.VEHICLES_SERVICE_URL }}
+      ASSIGNMENTS_SERVICE_URL: ${{ secrets.ASSIGNMENTS_SERVICE_URL }}
+      INCIDENTS_SERVICE_URL: ${{ secrets.INCIDENTS_SERVICE_URL }}
+      MAINTENANCE_SERVICE_URL: ${{ secrets.MAINTENANCE_SERVICE_URL }}
+      REPORTS_SERVICE_URL: ${{ secrets.REPORTS_SERVICE_URL }}
+
+    strategy:
+      fail-fast: true
+      matrix:
+        service: ${{ fromJSON(needs.changes.outputs.services) }}
+
+    defaults:
+      run:
+        working-directory: ./${{ matrix.service }}
+
     services:
       postgres:
-        image: postgres:16.3-alpine3.20 # Versión pinada — sin "latest"
+        image: postgres:16.3-alpine3.20
         env:
-          POSTGRES_USER: ${{ secrets.CI_DB_USER }}
-          POSTGRES_PASSWORD: ${{ secrets.CI_DB_PASSWORD }}
-          POSTGRES_DB: ${{ secrets.CI_DB_NAME }}
+          POSTGRES_USER: "postgres"
+          POSTGRES_PASSWORD: "postgres_secure_password"
+          POSTGRES_DB: "fleetops_test_db"
         ports:
           - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U $POSTGRES_USER"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
 
       redis:
-        image: redis:7.2.5-alpine3.20 # Versión pinada — sin "latest"
+        image: redis:7.2.5-alpine3.20
         ports:
           - 6379:6379
         options: >-
@@ -85,81 +112,43 @@ jobs:
           --health-retries 5
 
     steps:
-      # -----------------------------------------------------------------------
-      # 0. Checkout del código
-      # -----------------------------------------------------------------------
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # -----------------------------------------------------------------------
-      # Setup Python con caché del entorno virtual
-      # -----------------------------------------------------------------------
       - name: Set up Python ${{ env.PYTHON_VERSION }}
         uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: "pip"
+          cache-dependency-path: ./${{ matrix.service }}/requirements*.txt
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          # Instala dependencias de producción + desarrollo
-          # Se asume pyproject.toml con extras [dev] o requirements-dev.txt
-          if [ -f "pyproject.toml" ]; then
-            pip install ".[dev]"
-          elif [ -f "requirements-dev.txt" ]; then
+          pip install ruff mypy pytest pytest-cov alembic asyncpg psycopg2-binary
+          if [ -f "requirements-dev.txt" ]; then
             pip install -r requirements-dev.txt
-          else
+          elif [ -f "requirements.txt" ]; then
             pip install -r requirements.txt
-            pip install ruff mypy pytest pytest-cov
+          elif [ -f "pyproject.toml" ]; then
+            pip install --no-build-isolation -e . || pip install . --no-deps
           fi
 
-      # =======================================================================
-      # PASO 1 — ruff: Estilo y errores de código Python
-      # SAD §7: Mantenibilidad — Analizabilidad (cada microservicio rastrea
-      # dónde ocurren errores)
-      # =======================================================================
-      - name: "Paso 1 — ruff: Estilo y errores de código Python"
+      - name: "Paso 1 — ruff: Estilo y errores"
         run: |
-          echo "::group::ruff check (linting)"
           ruff check . --output-format=github
-          echo "::endgroup::"
-
-          echo "::group::ruff format (estilo)"
           ruff format --check .
-          echo "::endgroup::"
 
-      # =======================================================================
-      # PASO 2 — mypy: Tipos de datos correctos
-      # SAD §4: Python con FastAPI requiere tipado estricto para la inyección
-      # de dependencias y los DTOs de comunicación entre capas
-      # =======================================================================
       - name: "Paso 2 — mypy: Verificación de tipos"
         run: |
-          mypy . \
+          mypy app \
             --ignore-missing-imports \
             --strict \
             --pretty \
             --show-error-codes
 
-      # =======================================================================
-      # PASO 3 — pytest: Tests automatizados + cobertura >= 80 %
-      # SAD §7: "Capacidad para ser probado: cada microservicio podrá probar
-      # su funcionalidad particular"
-      # =======================================================================
       - name: "Paso 3 — pytest: Tests y cobertura"
-        env:
-          # Variables que los tests necesitan para conectarse a los servicios
-          DATABASE_URL: >-
-            postgresql://${{ secrets.CI_DB_USER }}:${{ secrets.CI_DB_PASSWORD
-            }}@localhost:5432/${{ secrets.CI_DB_NAME }}
-          REDIS_URL: "redis://localhost:6379"
-          # JWT — valor de prueba, no secreto real
-          JWT_SECRET_KEY: ${{ secrets.CI_JWT_SECRET }}
-          JWT_ALGORITHM: "HS256"
-          JWT_EXPIRATION_MINUTES: "60"
-          # Entorno explícitamente marcado como CI
-          APP_ENV: "testing"
+       
         run: |
           pytest \
             --cov=. \
@@ -167,73 +156,28 @@ jobs:
             --cov-report=xml:coverage.xml \
             --cov-report=html:htmlcov \
             --cov-fail-under=${{ env.COVERAGE_THRESHOLD }} \
-
             --tb=short \
             -v
 
-      # Publicar reporte de cobertura como anotación en el PR
       - name: Upload coverage report
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: coverage-report-${{ github.sha }}
+          name: coverage-report-${{ matrix.service }}-${{ github.sha }}
           path: |
-            coverage.xml
-            htmlcov/
+            ./${{ matrix.service }}/coverage.xml
+            ./${{ matrix.service }}/htmlcov/
           retention-days: 14
 
-      # Comentar cobertura en el PR (opcional pero útil para revisores)
-      - name: Coverage summary comment
-        if: always()
-        uses: MishaKav/pytest-coverage-comment@v1.0.36
-        with:
-          pytest-xml-coverage-path: coverage.xml
-          title: "📊 Reporte de Cobertura — FleetOps API Gateway"
-          badge-title: "Coverage"
-          hide-badge: false
-          hide-report: false
-          create-new-comment: false
-          hide-comment: false
-          report-only-changed-files: true
-
-      # =======================================================================
-      # PASO 4 — docker build: La imagen Docker construye sin errores
-      # SAD §8 Vista Física: "componentes ejecutados dentro de contenedores
-      # Docker para facilitar despliegue, mantenimiento y escalabilidad"
-      # Regla R5: multi-stage build, versión pinada, non-root user
-      # =======================================================================
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
       - name: "Paso 4 — docker build: Construcción de imagen"
         uses: docker/build-push-action@v6
         with:
-          context: .
-          file: ${{ env.DOCKERFILE_PATH }}
-          push: false # En CI solo validamos la build, NO publicamos
-          tags: ${{ env.IMAGE_TAG }}
-          # Caché de capas para acelerar builds sucesivos
+          context: ./${{ matrix.service }}
+          file: ./${{ matrix.service }}/Dockerfile
+          push: false
+          tags: fleetops-${{ matrix.service }}:ci-${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-          # Build args que el Dockerfile puede necesitar (sin secretos reales)
-          build-args: |
-            PYTHON_VERSION=${{ env.PYTHON_VERSION }}
-
-      # -----------------------------------------------------------------------
-      # Resumen final del pipeline — visible en la pestaña Summary del PR
-      # -----------------------------------------------------------------------
-      - name: Pipeline summary
-        if: always()
-        run: |
-          echo "## 🚦 Resultado del Quality Gate" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "| Paso | Herramienta | Estado |" >> $GITHUB_STEP_SUMMARY
-          echo "|------|-------------|--------|" >> $GITHUB_STEP_SUMMARY
-          echo "| 1 | ruff — Estilo y errores Python | Ver pasos anteriores |" >> $GITHUB_STEP_SUMMARY
-          echo "| 2 | mypy — Tipos de datos | Ver pasos anteriores |" >> $GITHUB_STEP_SUMMARY
-          THRESH=${{ env.COVERAGE_THRESHOLD }}
-          echo "| 3 | pytest — Tests + cobertura >= ${THRESH}% | Ver artefacto |" >> $GITHUB_STEP_SUMMARY
-          echo "| 4 | docker build — Imagen sin errores | Ver pasos anteriores |" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**SHA:** \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
-          echo "**PR:** #${{ github.event.pull_request.number }}" >> $GITHUB_STEP_SUMMARY

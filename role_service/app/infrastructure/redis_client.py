@@ -30,7 +30,7 @@ def role_cache_key(user_id: str) -> str:
 
 async def get_redis_client() -> AsyncGenerator[aioredis.Redis, None]:
     """FastAPI dependency yielding a Redis client."""
-    client = aioredis.from_url( # type: ignore[no-untyped-call]
+    client = aioredis.from_url(  # type: ignore[no-untyped-call]
         f"redis://{settings.redis_host}:{settings.redis_port}",
         password=settings.redis_password or None,
         encoding="utf-8",

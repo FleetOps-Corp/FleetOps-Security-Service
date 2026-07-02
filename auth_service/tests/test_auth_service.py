@@ -80,8 +80,8 @@ def auth_service(mock_repo, mock_hasher, jwt_handler) -> AuthDomainService:
 # AuthDomainService.register
 # =============================================================================
 
-class TestRegister:
 
+class TestRegister:
     @pytest.mark.asyncio
     async def test_register_returns_user_entity(self, auth_service, mock_repo):
         # Arrange
@@ -106,9 +106,7 @@ class TestRegister:
         assert result.role == UserRole.EMPLEADO
 
     @pytest.mark.asyncio
-    async def test_register_hashes_password_before_saving(
-        self, auth_service, mock_repo, mock_hasher
-    ):
+    async def test_register_hashes_password_before_saving(self, auth_service, mock_repo, mock_hasher):
         # Arrange
         plain = "SecurePass1"
         mock_repo.exists_by_email.return_value = False
@@ -127,9 +125,7 @@ class TestRegister:
         mock_repo.save.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_register_normalizes_email_to_lowercase(
-        self, auth_service, mock_repo
-    ):
+    async def test_register_normalizes_email_to_lowercase(self, auth_service, mock_repo):
         # Arrange
         mock_repo.exists_by_email.return_value = False
         # Act
@@ -141,9 +137,7 @@ class TestRegister:
         assert result.email == "upper@fleet.com"
 
     @pytest.mark.asyncio
-    async def test_register_raises_registration_error_if_email_exists(
-        self, auth_service, mock_repo
-    ):
+    async def test_register_raises_registration_error_if_email_exists(self, auth_service, mock_repo):
         # Arrange
         mock_repo.exists_by_email.return_value = True
         # Act & Assert
@@ -155,9 +149,7 @@ class TestRegister:
         assert "already exists" in str(exc_info.value)
 
     @pytest.mark.asyncio
-    async def test_register_does_not_call_save_when_email_exists(
-        self, auth_service, mock_repo
-    ):
+    async def test_register_does_not_call_save_when_email_exists(self, auth_service, mock_repo):
         # Arrange
         mock_repo.exists_by_email.return_value = True
         # Act
@@ -167,9 +159,7 @@ class TestRegister:
         mock_repo.save.assert_not_called()
 
     @pytest.mark.asyncio
-    async def test_register_allows_explicit_role_assignment(
-        self, auth_service, mock_repo
-    ):
+    async def test_register_allows_explicit_role_assignment(self, auth_service, mock_repo):
         # Arrange — used for admin seeding
         mock_repo.exists_by_email.return_value = False
         # Act
@@ -186,12 +176,10 @@ class TestRegister:
 # AuthDomainService.login
 # =============================================================================
 
-class TestLogin:
 
+class TestLogin:
     @pytest.mark.asyncio
-    async def test_login_returns_jwt_string(
-        self, auth_service, mock_repo, mock_hasher
-    ):
+    async def test_login_returns_jwt_string(self, auth_service, mock_repo, mock_hasher):
         # Arrange
         user = _make_user(email="emp@fleet.com", is_active=True)
         mock_repo.find_by_email.return_value = user
@@ -203,9 +191,7 @@ class TestLogin:
         assert result.count(".") == 2  # valid JWT has 3 segments
 
     @pytest.mark.asyncio
-    async def test_login_raises_auth_error_when_user_not_found(
-        self, auth_service, mock_repo
-    ):
+    async def test_login_raises_auth_error_when_user_not_found(self, auth_service, mock_repo):
         # Arrange
         mock_repo.find_by_email.return_value = None
         # Act & Assert
@@ -215,9 +201,7 @@ class TestLogin:
         assert "Invalid email or password" in str(exc_info.value)
 
     @pytest.mark.asyncio
-    async def test_login_raises_auth_error_when_password_wrong(
-        self, auth_service, mock_repo, mock_hasher
-    ):
+    async def test_login_raises_auth_error_when_password_wrong(self, auth_service, mock_repo, mock_hasher):
         # Arrange
         user = _make_user(is_active=True)
         mock_repo.find_by_email.return_value = user
@@ -228,9 +212,7 @@ class TestLogin:
         assert "Invalid email or password" in str(exc_info.value)
 
     @pytest.mark.asyncio
-    async def test_login_raises_auth_error_when_user_is_inactive(
-        self, auth_service, mock_repo, mock_hasher
-    ):
+    async def test_login_raises_auth_error_when_user_is_inactive(self, auth_service, mock_repo, mock_hasher):
         # Arrange — deactivated account cannot log in (SAD §4)
         user = _make_user(is_active=False)
         mock_repo.find_by_email.return_value = user
@@ -238,13 +220,10 @@ class TestLogin:
         # Act & Assert
         with pytest.raises(AuthError) as exc_info:
             await auth_service.login("employee@fleet.com", "correct_pass")
-        assert "deactivated" in str(exc_info.value).lower() or \
-               "Invalid email or password" in str(exc_info.value)
+        assert "deactivated" in str(exc_info.value).lower() or "Invalid email or password" in str(exc_info.value)
 
     @pytest.mark.asyncio
-    async def test_login_normalizes_email_before_lookup(
-        self, auth_service, mock_repo, mock_hasher
-    ):
+    async def test_login_normalizes_email_before_lookup(self, auth_service, mock_repo, mock_hasher):
         # Arrange
         user = _make_user(email="emp@fleet.com", is_active=True)
         mock_repo.find_by_email.return_value = user
@@ -255,9 +234,7 @@ class TestLogin:
         mock_repo.find_by_email.assert_called_once_with("emp@fleet.com")
 
     @pytest.mark.asyncio
-    async def test_login_token_contains_user_id(
-        self, auth_service, mock_repo, mock_hasher, jwt_handler
-    ):
+    async def test_login_token_contains_user_id(self, auth_service, mock_repo, mock_hasher, jwt_handler):
         # Arrange
         user = _make_user(email="emp@fleet.com", is_active=True)
         user_id = user.id
@@ -267,13 +244,12 @@ class TestLogin:
         token = await auth_service.login("emp@fleet.com", "pass")
         # Assert
         import jwt as pyjwt
+
         payload = pyjwt.decode(token, TEST_SECRET, algorithms=[TEST_ALGORITHM])
         assert payload["sub"] == user_id
 
     @pytest.mark.asyncio
-    async def test_login_token_contains_correct_role(
-        self, auth_service, mock_repo, mock_hasher
-    ):
+    async def test_login_token_contains_correct_role(self, auth_service, mock_repo, mock_hasher):
         # Arrange
         user = _make_user(role=UserRole.ADMINISTRADOR, is_active=True)
         mock_repo.find_by_email.return_value = user
@@ -282,5 +258,6 @@ class TestLogin:
         token = await auth_service.login("emp@fleet.com", "pass")
         # Assert
         import jwt as pyjwt
+
         payload = pyjwt.decode(token, TEST_SECRET, algorithms=[TEST_ALGORITHM])
         assert payload["role"] == "ADMINISTRADOR"

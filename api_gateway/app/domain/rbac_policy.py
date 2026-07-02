@@ -26,6 +26,7 @@ class AuthorizationResult:
         reason:       Human-readable explanation (logged for accountability — SAD §4).
         route_entry:  The matched route (None if route not found).
     """
+
     authorized: bool
     reason: str
     route_entry: RouteEntry | None = None

@@ -13,10 +13,19 @@ are reconstructed from these models by the repository.
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import Boolean, DateTime, String, func
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy import Boolean, DateTime, ForeignKey, String, func
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.infrastructure.database import Base
+
+
+class RoleModel(Base):
+    """Reflejo simplificado del catálogo de roles para uso exclusivo de autenticación."""
+
+    __tablename__ = "roles"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    name: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
 
 
 class UserModel(Base):
@@ -41,10 +50,11 @@ class UserModel(Base):
     hashed_password: Mapped[str] = mapped_column(String(255), nullable=False)
 
     # SAD §1: roles del sistema — stored as string for simplicity
-    role: Mapped[str] = mapped_column(
-        String(50),
+    role_id: Mapped[str] = mapped_column(
+        String(36),
+        ForeignKey("roles.id", ondelete="RESTRICT"),
         nullable=False,
-        default="EMPLEADO",
+        default="10131318-c79e-4691-91c3-30cd60056ab7",
     )
 
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
@@ -62,6 +72,8 @@ class UserModel(Base):
         onupdate=func.now(),
         default=lambda: datetime.now(timezone.utc),
     )
+
+    role: Mapped["RoleModel"] = relationship("RoleModel")
 
     def __repr__(self) -> str:
         return f"UserModel(id={self.id!r}, email={self.email!r}, role={self.role!r})"

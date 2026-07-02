@@ -14,13 +14,13 @@ import logging
 from typing import Optional
 
 import redis.asyncio as aioredis
-from sqlalchemy import delete, select
+from sqlalchemy import delete, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.config import settings
 from app.domain.role import Role, UserRoleAssignment
-from app.infrastructure.models import RoleModel, UserRoleModel
+from app.infrastructure.models import RoleModel, User, UserRoleModel
 from app.infrastructure.redis_client import role_cache_key
 
 logger = logging.getLogger(__name__)
@@ -91,9 +91,7 @@ class RoleRepository:
                         user_id=user_id,
                         role_id="cached",
                         role_name=name,
-                        assigned_at=__import__("datetime").datetime.now(
-                            __import__("datetime").timezone.utc
-                        ),
+                        assigned_at=__import__("datetime").datetime.now(__import__("datetime").timezone.utc),
                         assigned_by=None,
                     )
                     for name in role_names
@@ -102,11 +100,7 @@ class RoleRepository:
             logger.warning("Redis read error for roles (falling back): %s", exc)
 
         # Step 2: Database lookup (SAD pág. 10 — consultarRol)
-        stmt = (
-            select(UserRoleModel)
-            .options(selectinload(UserRoleModel.role))
-            .where(UserRoleModel.user_id == user_id)
-        )
+        stmt = select(UserRoleModel).options(selectinload(UserRoleModel.role)).where(UserRoleModel.user_id == user_id)
         result = await self._session.execute(stmt)
         models = result.scalars().all()
         assignments = [self._assignment_to_domain(m) for m in models]
@@ -121,7 +115,9 @@ class RoleRepository:
             )
             logger.debug(
                 "Cached roles for user_id=%s: %s (TTL=%ds)",
-                user_id, role_names_to_cache, settings.redis_role_cache_ttl,
+                user_id,
+                role_names_to_cache,
+                settings.redis_role_cache_ttl,
             )
         except Exception as exc:
             logger.warning("Redis write error for roles (non-fatal): %s", exc)
@@ -140,9 +136,7 @@ class RoleRepository:
         await self._session.flush()
         return role
 
-    async def assign_role_to_user(
-        self, assignment: UserRoleAssignment
-    ) -> UserRoleAssignment:
+    async def assign_role_to_user(self, assignment: UserRoleAssignment) -> UserRoleAssignment:
         model = UserRoleModel(
             id=assignment.id,
             user_id=assignment.user_id,
@@ -186,3 +180,21 @@ class RoleRepository:
         stmt = select(RoleModel.id).where(RoleModel.name == name.upper())
         result = await self._session.execute(stmt)
         return result.scalar_one_or_none() is not None
+
+    async def update_user_current_role(self, user_id: str, role_id: str) -> bool:
+        """
+        Ejecuta un UPDATE directo en PostgreSQL para cambiar el rol actual del usuario.
+        Utiliza la sesión compartida del repositorio.
+        Retorna True si el usuario existía y fue modificado, False en caso contrario.
+        """
+        # 1. Usamos la sesión compartida: self._session
+        stmt = update(User).where(User.id == user_id).values(role_id=role_id)
+
+        result = await self._session.execute(stmt)
+
+        # 2. Hacemos un flush para sincronizar el estado actual con Postgres
+        # sin cerrar la transacción general (exactamente como lo haces en save_role)
+        await self._session.flush()
+
+        # Si rowcount > 0, significa que el usuario existía y se actualizó con éxito
+        return result.rowcount > 0
