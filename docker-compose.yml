@@ -1,0 +1,207 @@
+# version: "3.9"
+
+# =============================================================================
+# FleetOps Security Cell — Docker Compose
+# SAD Reference: Vista Física (§8) — 3 service containers + PostgreSQL + Redis
+# All secrets are loaded from .env (never hardcoded here)
+# Run: docker compose up --build
+# =============================================================================
+
+networks:
+  fleetops_security_net:
+    driver: bridge
+    name: fleetops_security_net
+
+volumes:
+  postgres_data:
+    name: fleetops_security_postgres_data
+  redis_data:
+    name: fleetops_security_redis_data
+
+services:
+
+  # ---------------------------------------------------------------------------
+  # Infrastructure Layer — PostgreSQL (SAD pág. 5: <<Infrastructure Layer>>)
+  # Tables: users, roles, user_roles — shared by auth_service and role_service
+  # ---------------------------------------------------------------------------
+  postgres:
+    image: postgres:16.3-alpine3.19
+    container_name: fleetops_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - fleetops_security_net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    # PostgreSQL is NOT exposed externally — only accessible within the network
+    # Uncomment below only for local development debugging:
+    # ports:
+    #   - "5432:5432"
+
+  # ---------------------------------------------------------------------------
+  # Infrastructure Layer — Redis (SAD pág. 9/10: cache-aside for roles/sessions)
+  # ---------------------------------------------------------------------------
+  redis:
+    image: redis:7.2-alpine3.19
+    container_name: fleetops_redis
+    restart: unless-stopped
+    command: >
+      sh -c "
+        if [ -n \"$$REDIS_PASSWORD\" ]; then
+          redis-server --requirepass $$REDIS_PASSWORD --appendonly yes;
+        else
+          redis-server --appendonly yes;
+        fi
+      "
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+    volumes:
+      - redis_data:/data
+    networks:
+      - fleetops_security_net
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    # Redis is NOT exposed externally
+    # ports:
+    #   - "6379:6379"
+
+  # ---------------------------------------------------------------------------
+  # Logic Layer — Auth Service (SAD pág. 5: <<Auth Service>> Docker Container)
+  # Responsibilities: POST /auth/register, POST /auth/login, JWT generation
+  # ---------------------------------------------------------------------------
+  auth_service:
+    build:
+      context: ./auth_service
+      dockerfile: Dockerfile
+    volumes:
+     - ./auth_service:/app
+    container_name: fleetops_auth_service
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      DATABASE_URL_SYNC: ${DATABASE_URL_SYNC}
+      REDIS_HOST: ${REDIS_HOST}
+      REDIS_PORT: ${REDIS_PORT}
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      REDIS_SESSION_CACHE_TTL: ${REDIS_SESSION_CACHE_TTL}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY}
+      JWT_ALGORITHM: ${JWT_ALGORITHM}
+      JWT_EXPIRATION_MINUTES: ${JWT_EXPIRATION_MINUTES}
+      AUTH_SERVICE_PORT: ${AUTH_SERVICE_PORT}
+      LOG_LEVEL: ${LOG_LEVEL}
+    networks:
+      - fleetops_security_net
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:${AUTH_SERVICE_PORT}/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    # Auth service is NOT exposed externally — only reachable via API Gateway
+    # ports:
+    #   - "8001:8001"
+
+  # ---------------------------------------------------------------------------
+  # Logic Layer — Role Service (SAD pág. 5: <<Role Service>> Docker Container)
+  # Responsibilities: Role CRUD, RBAC validation, cache-aside with Redis
+  # ---------------------------------------------------------------------------
+  role_service:
+    build:
+      context: ./role_service
+      dockerfile: Dockerfile
+    volumes:
+      - ./role_service:/app
+    container_name: fleetops_role_service
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      DATABASE_URL_SYNC: ${DATABASE_URL_SYNC}
+      REDIS_HOST: ${REDIS_HOST}
+      REDIS_PORT: ${REDIS_PORT}
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      REDIS_ROLE_CACHE_TTL: ${REDIS_ROLE_CACHE_TTL}
+      ROLE_SERVICE_PORT: ${ROLE_SERVICE_PORT}
+      LOG_LEVEL: ${LOG_LEVEL}
+    networks:
+      - fleetops_security_net
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:${ROLE_SERVICE_PORT}/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    # Role service is NOT exposed externally
+    # ports:
+    #   - "8002:8002"
+
+  # ---------------------------------------------------------------------------
+  # Security Layer — API Gateway (SAD pág. 5: <<API Gateway>> — Security Layer)
+  # Responsibilities: JWT validation, RBAC enforcement, CORS, Rate Limiting,
+  #                   Routing to downstream microservices
+  # This is the ONLY service exposed to external traffic (SAD §8)
+  # ---------------------------------------------------------------------------
+  api_gateway:
+    build:
+      context: ./api_gateway
+      dockerfile: Dockerfile
+    volumes:
+      - ./api_gateway:/app
+    container_name: fleetops_api_gateway
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      AUTH_SERVICE_URL: ${AUTH_SERVICE_URL}
+      ROLE_SERVICE_URL: ${ROLE_SERVICE_URL}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY}
+      JWT_ALGORITHM: ${JWT_ALGORITHM}
+      GATEWAY_RATE_LIMIT: ${GATEWAY_RATE_LIMIT}
+      GATEWAY_PORT: ${GATEWAY_PORT}
+      VEHICLES_SERVICE_URL: ${VEHICLES_SERVICE_URL}
+      ASSIGNMENTS_SERVICE_URL: ${ASSIGNMENTS_SERVICE_URL}
+      INCIDENTS_SERVICE_URL: ${INCIDENTS_SERVICE_URL}
+      MAINTENANCE_SERVICE_URL: ${MAINTENANCE_SERVICE_URL}
+      REPORTS_SERVICE_URL: ${REPORTS_SERVICE_URL}
+      LOG_LEVEL: ${LOG_LEVEL}
+    ports:
+      - "${GATEWAY_PORT}:${GATEWAY_PORT}"
+    networks:
+      - fleetops_security_net
+    depends_on:
+      auth_service:
+        condition: service_healthy
+      role_service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:${GATEWAY_PORT}/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 40s

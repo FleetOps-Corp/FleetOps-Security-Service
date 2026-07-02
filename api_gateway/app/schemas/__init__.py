@@ -1,0 +1,1 @@
+# Schemas layer — API Gateway

@@ -1,0 +1,16 @@
+[importlinter]
+root_packages =
+    app
+
+[importlinter:contract:gateway-layers]
+name = API Gateway Layers
+type = layers
+
+layers =
+    routes
+    middleware
+    services
+    domain
+
+containers =
+    app

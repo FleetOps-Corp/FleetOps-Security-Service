@@ -1,0 +1,183 @@
+# =============================================================================
+# FILE: .github/workflows/ci.yml
+# PROJECT: FleetOps — Monorepo Security & Gateway
+# REFERENCE: Estructura Multidirectorio (api_gateway, auth_service, role_service)
+# =============================================================================
+
+name: CI — Monorepo PR Validation
+
+on:
+  pull_request:
+    branches:
+      - main
+      - develop
+    
+    paths-ignore:
+      - "**.md"
+      - "docs/**"
+      - ".gitignore"
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHON_VERSION: "3.12"
+  COVERAGE_THRESHOLD: "80"
+
+jobs:
+  # ===========================================================================
+  # 1. DETECTOR DE CAMBIOS: Determina qué microservicios fueron modificados
+  # ===========================================================================
+  changes:
+    name: Detect Changed Services
+    runs-on: ubuntu-24.04
+    outputs:
+      services: ${{ steps.filter.outputs.changes }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Check paths
+        id: filter
+        uses: dorny/paths-filter@v3
+        with:
+          # Filtros estrictos basados en tu árbol de directorios
+          filters: |
+            api_gateway: 'api_gateway/**'
+            auth_service: 'auth_service/**'
+            role_service: 'role_service/**'
+
+  # ===========================================================================
+  # 2. QUALITY GATE COMPARTIDO 
+  # ===========================================================================
+  quality-gate:
+    name: Quality Gate — ${{ matrix.service }}
+    needs: changes
+    if: ${{ needs.changes.outputs.services != '[]' && needs.changes.outputs.services != '' }}
+    runs-on: ubuntu-24.04
+    
+    env:
+      
+      POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+      JWT_SECRET_KEY: ${{ secrets.JWT_SECRET_KEY }}
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      DATABASE_URL_SYNC: ${{ secrets.DATABASE_URL_SYNC }}
+
+      
+      APP_ENV: ${{ vars.APP_ENV }}
+      POSTGRES_USER: ${{ vars.POSTGRES_USER }}
+      POSTGRES_DB: ${{ vars.POSTGRES_DB }}  
+      REDIS_HOST: ${{ vars.REDIS_HOST }}
+      REDIS_PORT: ${{ vars.REDIS_PORT }}
+      JWT_ALGORITHM: ${{ vars.JWT_ALGORITHM }}
+      JWT_EXPIRATION_MINUTES: ${{ vars.JWT_EXPIRATION_MINUTES }}
+      
+      
+      AUTH_SERVICE_URL: ${{ secrets.AUTH_SERVICE_URL }}
+      ROLE_SERVICE_URL: ${{ secrets.ROLE_SERVICE_URL }}
+      VEHICLES_SERVICE_URL: ${{ secrets.VEHICLES_SERVICE_URL }}
+      ASSIGNMENTS_SERVICE_URL: ${{ secrets.ASSIGNMENTS_SERVICE_URL }}
+      INCIDENTS_SERVICE_URL: ${{ secrets.INCIDENTS_SERVICE_URL }}
+      MAINTENANCE_SERVICE_URL: ${{ secrets.MAINTENANCE_SERVICE_URL }}
+      REPORTS_SERVICE_URL: ${{ secrets.REPORTS_SERVICE_URL }}
+
+    strategy:
+      fail-fast: true
+      matrix:
+        service: ${{ fromJSON(needs.changes.outputs.services) }}
+
+    defaults:
+      run:
+        working-directory: ./${{ matrix.service }}
+
+    services:
+      postgres:
+        image: postgres:16.3-alpine3.20
+        env:
+          POSTGRES_USER: "postgres"
+          POSTGRES_PASSWORD: "postgres_secure_password"
+          POSTGRES_DB: "fleetops_test_db"
+        ports:
+          - 5432:5432
+
+      redis:
+        image: redis:7.2.5-alpine3.20
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ env.PYTHON_VERSION }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: "pip"
+          cache-dependency-path: ./${{ matrix.service }}/requirements*.txt
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install ruff mypy pytest pytest-cov alembic asyncpg psycopg2-binary
+          if [ -f "requirements-dev.txt" ]; then
+            pip install -r requirements-dev.txt
+          elif [ -f "requirements.txt" ]; then
+            pip install -r requirements.txt
+          elif [ -f "pyproject.toml" ]; then
+            pip install --no-build-isolation -e . || pip install . --no-deps
+          fi
+
+      - name: "Paso 1 — ruff: Estilo y errores"
+        run: |
+          ruff check . --output-format=github
+          ruff format --check .
+
+      - name: "Paso 2 — mypy: Verificación de tipos"
+        run: |
+          mypy app \
+            --ignore-missing-imports \
+            --strict \
+            --pretty \
+            --show-error-codes
+
+      - name: "Paso 3 — pytest: Tests y cobertura"
+       
+        run: |
+          pytest \
+            --cov=. \
+            --cov-report=term-missing \
+            --cov-report=xml:coverage.xml \
+            --cov-report=html:htmlcov \
+            --cov-fail-under=${{ env.COVERAGE_THRESHOLD }} \
+            --tb=short \
+            -v
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report-${{ matrix.service }}-${{ github.sha }}
+          path: |
+            ./${{ matrix.service }}/coverage.xml
+            ./${{ matrix.service }}/htmlcov/
+          retention-days: 14
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: "Paso 4 — docker build: Construcción de imagen"
+        uses: docker/build-push-action@v6
+        with:
+          context: ./${{ matrix.service }}
+          file: ./${{ matrix.service }}/Dockerfile
+          push: false
+          tags: fleetops-${{ matrix.service }}:ci-${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

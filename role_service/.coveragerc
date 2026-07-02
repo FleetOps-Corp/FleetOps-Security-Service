@@ -1,0 +1,9 @@
+[run]
+source = app/domain,app/infrastructure
+
+[report]
+omit =
+    app/infrastructure/database.py
+    app/infrastructure/redis_client.py
+
+fail_under = 95

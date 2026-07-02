@@ -1,0 +1,200 @@
+# =============================================================================
+# FILE: pyproject.toml
+# Ubicación: raíz del repositorio
+# SAD REF: §4 Stack (Python, FastAPI, PostgreSQL, Redis), §7 ISO/IEC 25010
+# Herramienta de build: Hatch (estándar moderno de Python — PEP 517/518/621)
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# [project] — Metadatos del paquete (PEP 621)
+# Describe la célula completa: api_gateway + authservice + role_service
+# -----------------------------------------------------------------------------
+[project]
+name = "fleetops-api-gateway"
+version = "0.1.0"
+description = "API Gateway con RBAC para el sistema de gestión de flotas FleetOps"
+requires-python = ">=3.12"
+
+# Dependencias de PRODUCCIÓN
+# SAD §4: FastAPI, PostgreSQL (asyncpg/SQLAlchemy), Redis, JWT
+dependencies = [
+    # --- Capa de seguridad (SAD §5 Vista Global) ---
+    "fastapi==0.115.5",           # Framework REST principal
+    "uvicorn[standard]==0.32.1",  # Servidor ASGI para FastAPI
+    "python-jose[cryptography]==3.3.0",  # JWT — SAD §3: token con roles RBAC
+    "passlib[bcrypt]==1.7.4",     # Encriptación de contraseñas — SAD §7 Confidencialidad
+    "python-multipart==0.0.12",   # Soporte form-data para login
+
+    # --- Capa de infraestructura (SAD §5 Capa de infraestructura) ---
+    "sqlalchemy==2.0.36",         # ORM — acceso a PostgreSQL via DTOs (SAD §6)
+    "alembic==1.14.0",            # Migraciones de esquema PostgreSQL
+    "asyncpg==0.30.0",            # Driver async para PostgreSQL
+    "redis==5.2.0",               # Cliente Redis — caché de sesiones (SAD §9)
+
+    # --- Validación (SAD §7 Fiabilidad — Validator) ---
+    "pydantic==2.10.2",           # Validación de datos y DTOs
+    "pydantic-settings==2.6.1",   # Configuración via variables de entorno
+
+    # --- Rate limiting (SAD §5: "rate limit para evitar el colapso") ---
+    "slowapi==0.1.9",             # Rate limiting para FastAPI
+]
+
+# -----------------------------------------------------------------------------
+# [project.optional-dependencies] — Dependencias de DESARROLLO y CI
+# Referencia pipeline: ruff (Paso 1), mypy (Paso 2), pytest (Paso 3)
+# -----------------------------------------------------------------------------
+[project.optional-dependencies]
+dev = [
+    # PASO 1 — ruff: Estilo y errores de código Python
+    "ruff==0.8.3",
+
+    # PASO 2 — mypy: Tipos de datos correctos
+    "mypy==1.13.0",
+    "types-passlib==1.7.7.20240819",   # Stubs de tipos para passlib
+    "types-redis==4.6.0.20241004",     # Stubs de tipos para redis
+
+    # PASO 3 — pytest: Tests automatizados y cobertura >= 80%
+    "pytest==8.3.4",
+    "pytest-asyncio==0.24.0",          # Soporte async en tests (FastAPI es async)
+    "pytest-cov==6.0.0",               # Cobertura de código
+    "httpx==0.28.1",                   # Cliente HTTP para TestClient de FastAPI
+    "anyio==4.7.0",                    # Backend async para tests
+
+    # Mocks de infraestructura en tests unitarios
+    "fakeredis==2.26.1",               # Redis falso — sin levantar servicio real
+]
+
+# -----------------------------------------------------------------------------
+# [build-system] — PEP 517: define cómo se construye el paquete
+# -----------------------------------------------------------------------------
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+# =============================================================================
+# HERRAMIENTAS DE CALIDAD
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# [tool.ruff] — PASO 1 del pipeline
+# SAD §7 Mantenibilidad — Analizabilidad: código legible y sin errores de estilo
+# Docs: https://docs.astral.sh/ruff/
+# -----------------------------------------------------------------------------
+[tool.ruff]
+# Directorios a analizar — los 3 módulos del SAD §4 + tests
+src = ["api_gateway", "authservice", "role_service", "tests"]
+target-version = "py312"
+line-length = 120
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes (imports no usados, variables no definidas)
+    "I",   # isort (orden de imports)
+    "N",   # pep8-naming (convenciones de nombres)
+    "UP",  # pyupgrade (sintaxis moderna de Python)
+    "B",   # flake8-bugbear (bugs comunes)
+    "S",   # flake8-bandit (seguridad — relevante por SAD §7 Confidencialidad)
+    "ANN", # flake8-annotations (tipos — requerido por mypy en Paso 2)
+]
+ignore = [
+    "ANN101",  # Missing type annotation for `self`
+    "ANN102",  # Missing type annotation for `cls`
+    "S101",    # Use of `assert` — permitido en tests
+]
+
+[tool.ruff.lint.per-file-ignores]
+# En tests se permiten asserts y se relajan anotaciones
+"tests/**/*.py" = ["S101", "ANN", "S105", "S106"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["api_gateway", "authservice", "role_service"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+# -----------------------------------------------------------------------------
+# [tool.mypy] — PASO 2 del pipeline
+# SAD §7 Fiabilidad — Ausencia de fallos: el tipado estático evita errores en
+# tiempo de ejecución en la validación de JWT y DTOs (SAD §6 Comunicación)
+# Docs: https://mypy.readthedocs.io/
+# -----------------------------------------------------------------------------
+[tool.mypy]
+python_version = "3.12"
+strict = true                     # Modo estricto completo
+
+# Módulos del proyecto (SAD §4 — los 3 módulos)
+files = ["api_gateway", "authservice", "role_service"]
+
+# Reporte de errores
+pretty = true
+show_error_codes = true
+show_column_numbers = true
+
+# Librerías de terceros sin stubs completos
+[[tool.mypy.overrides]]
+module = [
+    "jose.*",          # python-jose no tiene stubs oficiales completos
+    "passlib.*",       # passlib — stubs parciales
+    "slowapi.*",       # slowapi — sin stubs
+    "alembic.*",       # alembic — stubs limitados
+    "fakeredis.*",     # fakeredis — sin stubs
+]
+ignore_missing_imports = true
+
+# -----------------------------------------------------------------------------
+# [tool.pytest] — PASO 3 del pipeline
+# SAD §7: "cada microservicio podrá probar su funcionalidad particular"
+# Umbral de cobertura: >= 80% (tabla de herramientas del pipeline)
+# Docs: https://docs.pytest.org/
+# -----------------------------------------------------------------------------
+[tool.pytest.ini_options]
+# Directorio raíz de tests
+testpaths = ["tests"]
+
+# Modo asyncio: auto — necesario porque FastAPI usa async/await
+asyncio_mode = "auto"
+
+# Marcadores personalizados por módulo (SAD §4: 3 módulos independientes)
+markers = [
+    "unit: Tests unitarios — sin dependencias de infraestructura real",
+    "integration: Tests de integración — requieren PostgreSQL y Redis",
+    "api_gateway: Tests del módulo API Gateway",
+    "authservice: Tests del módulo AuthService",
+    "role_service: Tests del módulo RoleService",
+]
+
+# Opciones por defecto al correr pytest
+addopts = [
+    "--strict-markers",       # Fallar si se usa un marcador no declarado
+    "--tb=short",             # Tracebacks cortos y legibles
+    "-v",                     # Output verboso
+]
+
+# -----------------------------------------------------------------------------
+# [tool.coverage] — Configuración del reporte de cobertura (pytest-cov)
+# Umbral >= 80% — alineado con el pipeline ci.yml (COVERAGE_THRESHOLD=80)
+# -----------------------------------------------------------------------------
+[tool.coverage.run]
+source = ["api_gateway", "authservice", "role_service"]
+omit = [
+    "*/tests/*",
+    "*/migrations/*",    # Alembic migrations no se testean con coverage
+    "*/__init__.py",
+    "*/conftest.py",
+]
+branch = true            # Cobertura de ramas (if/else), no solo líneas
+
+[tool.coverage.report]
+fail_under = 80          # El pipeline falla si la cobertura cae de 80%
+show_missing = true      # Muestra las líneas no cubiertas
+skip_covered = false
+precision = 2
+
+[tool.coverage.html]
+directory = "htmlcov"    # Carpeta del reporte HTML (referenciado en ci.yml)
+
+[tool.coverage.xml]
+output = "coverage.xml"  # Archivo XML para el comentario en el PR (ci.yml)
