@@ -47,3 +47,10 @@ Thumbs.db
 
 # Seed admin
 /auth_service/app/seed_admin.py
+
+#Certs
+certs/*.key
+certs/*.crt
+certs/*.csr
+certs/*.srl
+!certs/.gitkeep

@@ -88,6 +88,9 @@ services:
       dockerfile: Dockerfile
     volumes:
      - ./auth_service:/app
+     - ./certs/auth-service.crt:/certs/tls.crt:ro
+     - ./certs/auth-service.key:/certs/tls.key:ro
+     - ./certs/ca.crt:/certs/ca.crt:ro
     container_name: fleetops_auth_service
     restart: unless-stopped
     env_file:
@@ -104,6 +107,9 @@ services:
       JWT_EXPIRATION_MINUTES: ${JWT_EXPIRATION_MINUTES}
       AUTH_SERVICE_PORT: ${AUTH_SERVICE_PORT}
       LOG_LEVEL: ${LOG_LEVEL}
+      - TLS_CERT_PATH=/certs/tls.crt
+      - TLS_KEY_PATH=/certs/tls.key
+      - CA_BUNDLE_PATH=/certs/ca.crt
     networks:
       - fleetops_security_net
     depends_on:
@@ -131,6 +137,9 @@ services:
       dockerfile: Dockerfile
     volumes:
       - ./role_service:/app
+      - ./certs/auth-service.crt:/certs/tls.crt:ro
+      - ./certs/auth-service.key:/certs/tls.key:ro
+      - ./certs/ca.crt:/certs/ca.crt:ro
     container_name: fleetops_role_service
     restart: unless-stopped
     env_file:
@@ -144,6 +153,9 @@ services:
       REDIS_ROLE_CACHE_TTL: ${REDIS_ROLE_CACHE_TTL}
       ROLE_SERVICE_PORT: ${ROLE_SERVICE_PORT}
       LOG_LEVEL: ${LOG_LEVEL}
+      - TLS_CERT_PATH=/certs/tls.crt
+      - TLS_KEY_PATH=/certs/tls.key
+      - CA_BUNDLE_PATH=/certs/ca.crt
     networks:
       - fleetops_security_net
     depends_on:
@@ -173,6 +185,9 @@ services:
       dockerfile: Dockerfile
     volumes:
       - ./api_gateway:/app
+      - ./certs/auth-service.crt:/certs/tls.crt:ro
+      - ./certs/auth-service.key:/certs/tls.key:ro
+      - ./certs/ca.crt:/certs/ca.crt:ro
     container_name: fleetops_api_gateway
     restart: unless-stopped
     env_file:
@@ -190,6 +205,9 @@ services:
       MAINTENANCE_SERVICE_URL: ${MAINTENANCE_SERVICE_URL}
       REPORTS_SERVICE_URL: ${REPORTS_SERVICE_URL}
       LOG_LEVEL: ${LOG_LEVEL}
+      - TLS_CERT_PATH=/certs/tls.crt
+      - TLS_KEY_PATH=/certs/tls.key
+      - CA_BUNDLE_PATH=/certs/ca.crt
     ports:
       - "${GATEWAY_PORT}:${GATEWAY_PORT}"
     networks:
