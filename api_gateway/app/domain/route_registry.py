@@ -19,10 +19,11 @@ Architecture note: The route registry lives in the Domain layer because
 it encodes business authorization rules, not infrastructure concerns.
 """
 
-from app.config import settings
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Optional
+
+from app.config import settings
 
 
 class Role(str, Enum):

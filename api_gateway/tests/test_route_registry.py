@@ -8,9 +8,9 @@ SAD Reference: Route dictionary (§3), RBAC roles (§1)
 No infrastructure dependencies — pure domain tests.
 """
 
-from app.config import settings
 import pytest
 
+from app.config import settings
 from app.domain.route_registry import Role, RouteEntry, RouteRegistry
 
 # =============================================================================
