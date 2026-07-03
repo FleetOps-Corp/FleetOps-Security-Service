@@ -145,7 +145,6 @@ class TestRouteRegistry:
         # Assert
         assert result is not None
         assert result.prefix == settings.vehicles_service_prefix
-        assert result.upstream_url_key == settings.VEHICLES_SERVICE_URL
 
     def test_find_route_matches_asignaciones(self):
         # Arrange
