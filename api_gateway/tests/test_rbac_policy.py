@@ -225,7 +225,7 @@ class TestRBACPolicyEvaluate:
         )
         # Assert
         assert result.route_entry is not None
-        assert result.route_entry.prefix == "/reportes"
+        assert result.route_entry.prefix == settings.reports_service_prefix
 
     def test_evaluate_denial_reason_mentions_role_and_route(self, policy: RBACPolicy):
         # Arrange
@@ -235,7 +235,7 @@ class TestRBACPolicyEvaluate:
         result = policy.evaluate(path=path, user_role=role)
         # Assert — reason should mention the role for accountability (SAD §4)
         assert role in result.reason
-        assert "/reportes" in result.reason
+        assert settings.reports_service_prefix in result.reason
 
     def test_evaluate_unknown_role_string_is_denied(self, policy: RBACPolicy):
         # Arrange — a role that doesn't exist in the system should be denied
