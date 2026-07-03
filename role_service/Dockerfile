@@ -42,4 +42,4 @@ EXPOSE 8002
 HEALTHCHECK --interval=15s --timeout=5s --start-period=30s --retries=3 \
     CMD curl -f http://localhost:8002/health || exit 1
 
-CMD ["./entrypoint.sh"]
+CMD ["sh", "./entrypoint.sh"]
