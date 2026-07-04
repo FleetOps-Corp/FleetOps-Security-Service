@@ -10,6 +10,7 @@ All infrastructure is absent — pure domain logic only.
 
 import pytest
 
+from app.config import settings
 from app.domain.rbac_policy import AuthorizationResult, RBACPolicy
 from app.domain.route_registry import Role, RouteRegistry
 
@@ -100,7 +101,7 @@ class TestRBACPolicyEvaluate:
 
     def test_evaluate_protected_route_with_no_token_is_denied(self, policy: RBACPolicy):
         # Arrange — /vehiculos requires at least EMPLEADO_MANTENIMIENTO
-        path = "/vehiculos/123"
+        path = f"{settings.vehicles_service_prefix}/123"
         # Act
         result = policy.evaluate(path=path, user_role=None)
         # Assert
@@ -108,11 +109,13 @@ class TestRBACPolicyEvaluate:
         assert "Authentication required" in result.reason
 
     def test_evaluate_protected_route_with_none_role_returns_route_entry(self, policy: RBACPolicy):
+        # Arrange
+        path = f"{settings.reports_service_prefix}/q1"
         # Act
-        result = policy.evaluate(path="/reportes/q1", user_role=None)
+        result = policy.evaluate(path=path, user_role=None)
         # Assert — route_entry is returned even when denied, for error handling
         assert result.route_entry is not None
-        assert result.route_entry.prefix == "/reportes"
+        assert result.route_entry.prefix == settings.reports_service_prefix
 
     # -------------------------------------------------------------------------
     # Branch 4: Role IS in allowed_roles → authorized
@@ -120,7 +123,7 @@ class TestRBACPolicyEvaluate:
 
     def test_evaluate_administrador_can_access_vehiculos(self, policy: RBACPolicy):
         # Arrange
-        path = "/vehiculos/fleet-001"
+        path = f"{settings.vehicles_service_prefix}/fleet-001"
         # Act
         result = policy.evaluate(path=path, user_role=Role.ADMINISTRADOR.value)
         # Assert
@@ -128,7 +131,7 @@ class TestRBACPolicyEvaluate:
 
     def test_evaluate_empleado_mantenimiento_can_access_vehiculos(self, policy: RBACPolicy):
         # Arrange — SAD §1: maintenance employee accesses vehicle info
-        path = "/vehiculos/engine-data"
+        path = f"{settings.vehicles_service_prefix}/engine-data"
         # Act
         result = policy.evaluate(path=path, user_role=Role.EMPLEADO_MANTENIMIENTO.value)
         # Assert
@@ -136,25 +139,29 @@ class TestRBACPolicyEvaluate:
 
     def test_evaluate_empleado_can_access_asignaciones(self, policy: RBACPolicy):
         # Arrange — SAD §1: basic employee accesses their assignments
-        path = "/asignaciones/my-route"
+        path = f"{settings.assignments_service_prefix}/my-route"
         # Act
         result = policy.evaluate(path=path, user_role=Role.EMPLEADO.value)
         # Assert
         assert result.authorized is True
 
     def test_evaluate_empleado_incidentes_can_access_incidentes(self, policy: RBACPolicy):
+        # Arrange
+        path = f"{settings.incidents_service_prefix}/incident-007"
         # Act
         result = policy.evaluate(
-            path="/incidentes/incident-007",
+            path=path,
             user_role=Role.EMPLEADO_INCIDENTES.value,
         )
         # Assert
         assert result.authorized is True
 
     def test_evaluate_empleado_mantenimiento_can_access_mantenimiento(self, policy: RBACPolicy):
+        # Arrange
+        path = f"{settings.maintenance_service_prefix}/preventive/schedule"
         # Act
         result = policy.evaluate(
-            path="/mantenimiento/preventive/schedule",
+            path=path,
             user_role=Role.EMPLEADO_MANTENIMIENTO.value,
         )
         # Assert
@@ -162,7 +169,7 @@ class TestRBACPolicyEvaluate:
 
     def test_evaluate_administrador_can_access_reportes(self, policy: RBACPolicy):
         # Arrange — SAD §1: admin generates strategic reports
-        path = "/reportes/q1-strategic"
+        path = f"{settings.reports_service_prefix}/q1-strategic"
         # Act
         result = policy.evaluate(path=path, user_role=Role.ADMINISTRADOR.value)
         # Assert
@@ -174,7 +181,7 @@ class TestRBACPolicyEvaluate:
 
     def test_evaluate_empleado_cannot_access_vehiculos(self, policy: RBACPolicy):
         # Arrange — SAD §1: basic employee has no vehicle access
-        path = "/vehiculos/full-list"
+        path = f"{settings.vehicles_service_prefix}/full-list"
         # Act
         result = policy.evaluate(path=path, user_role=Role.EMPLEADO.value)
         # Assert
@@ -182,9 +189,11 @@ class TestRBACPolicyEvaluate:
         assert "not permitted" in result.reason
 
     def test_evaluate_empleado_cannot_access_reportes(self, policy: RBACPolicy):
+        # Arrange
+        path = f"{settings.reports_service_prefix}/annual"
         # Act
         result = policy.evaluate(
-            path="/reportes/annual",
+            path=path,
             user_role=Role.EMPLEADO.value,
         )
         # Assert
@@ -192,16 +201,18 @@ class TestRBACPolicyEvaluate:
 
     def test_evaluate_empleado_mantenimiento_cannot_access_incidentes(self, policy: RBACPolicy):
         # Arrange — maintenance employee cannot manage incidents
+        path = f"{settings.incidents_service_prefix}/list"
         result = policy.evaluate(
-            path="/incidentes/list",
+            path=path,
             user_role=Role.EMPLEADO_MANTENIMIENTO.value,
         )
         # Assert
         assert result.authorized is False
 
     def test_evaluate_empleado_incidentes_cannot_access_mantenimiento(self, policy: RBACPolicy):
+        path = f"{settings.maintenance_service_prefix}/history"
         result = policy.evaluate(
-            path="/mantenimiento/history",
+            path=path,
             user_role=Role.EMPLEADO_INCIDENTES.value,
         )
         assert result.authorized is False
@@ -209,27 +220,27 @@ class TestRBACPolicyEvaluate:
     def test_evaluate_denied_result_includes_route_entry(self, policy: RBACPolicy):
         # Arrange — ensure route_entry is present even on role-mismatch denial
         result = policy.evaluate(
-            path="/reportes/q4",
+            path=f"{settings.reports_service_prefix}/q4",
             user_role=Role.EMPLEADO.value,
         )
         # Assert
         assert result.route_entry is not None
-        assert result.route_entry.prefix == "/reportes"
+        assert result.route_entry.prefix == settings.reports_service_prefix
 
     def test_evaluate_denial_reason_mentions_role_and_route(self, policy: RBACPolicy):
         # Arrange
         role = Role.EMPLEADO.value
-        path = "/reportes/strategic"
+        path = f"{settings.reports_service_prefix}/strategic"
         # Act
         result = policy.evaluate(path=path, user_role=role)
         # Assert — reason should mention the role for accountability (SAD §4)
         assert role in result.reason
-        assert "/reportes" in result.reason
+        assert settings.reports_service_prefix in result.reason
 
     def test_evaluate_unknown_role_string_is_denied(self, policy: RBACPolicy):
         # Arrange — a role that doesn't exist in the system should be denied
         result = policy.evaluate(
-            path="/vehiculos/list",
+            path=f"{settings.vehicles_service_prefix}/list",
             user_role="SUPER_VILLAIN",
         )
         # Assert
