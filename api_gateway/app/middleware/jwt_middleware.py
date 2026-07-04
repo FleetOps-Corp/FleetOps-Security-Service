@@ -55,7 +55,7 @@ def decode_jwt(token: str) -> dict[str, Any]:
     try:
         payload: dict[str, Any] = jwt.decode(
             token,
-            settings.jwt_secret_key,
+            settings.jwt_public_key,
             algorithms=[settings.jwt_algorithm],
         )
         return payload

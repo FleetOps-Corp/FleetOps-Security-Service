@@ -60,7 +60,6 @@ jobs:
     env:
       
       POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
-      JWT_SECRET_KEY: ${{ secrets.JWT_SECRET_KEY }}
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
       DATABASE_URL_SYNC: ${{ secrets.DATABASE_URL_SYNC }}
 
