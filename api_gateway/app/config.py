@@ -23,8 +23,8 @@ class GatewaySettings(BaseSettings):
     )
 
     # --- JWT (SAD §7: confidentiality — session token) ---
-    jwt_secret_key: str
-    jwt_algorithm: str = "HS256"
+    jwt_public_key_path: str
+    jwt_algorithm: str = "RS256"
 
     # --- Internal service URLs (SAD §3: route dictionary) ---
     auth_service_url: str
@@ -44,6 +44,10 @@ class GatewaySettings(BaseSettings):
     gateway_port: int = 8000
     log_level: str = "INFO"
     app_env: str = "development"
+
+    @property
+    def jwt_public_key(self) -> str:
+        return open(self.jwt_public_key_path, "r", encoding="utf-8").read()
 
 
 # Singleton instance — imported by all modules

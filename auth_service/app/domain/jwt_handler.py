@@ -41,12 +41,13 @@ class JWTHandler:
 
     def __init__(
         self,
-        secret_key: str | None = None,
+        private_key: str | None = None,
+        public_key: str | None = None,
         algorithm: str | None = None,
         expiration_minutes: int | None = None,
     ) -> None:
-        # Allow injection for testing; fall back to settings
-        self._secret = secret_key or settings.jwt_secret_key
+        self._private_key = private_key or settings.jwt_private_key
+        self._public_key = public_key or settings.jwt_public_key
         self._algorithm = algorithm or settings.jwt_algorithm
         self._expiry_minutes = expiration_minutes or settings.jwt_expiration_minutes
 
@@ -76,7 +77,8 @@ class JWTHandler:
             "exp": expires_at,
         }
 
-        return jwt.encode(payload, self._secret, algorithm=self._algorithm)
+        # Firma con la clave PRIVADA
+        return jwt.encode(payload, self._private_key, algorithm=self._algorithm)
 
     def decode_token(self, token: str) -> TokenPayload:
         """
@@ -94,7 +96,7 @@ class JWTHandler:
         """
         payload = jwt.decode(
             token,
-            self._secret,
+            self._public_key,
             algorithms=[self._algorithm],
         )
 
