@@ -109,7 +109,7 @@ class TestCreateToken:
 
     def test_create_refresh_token_contains_refresh_type_claim(self, handler: JWTHandler):
         token = handler.create_token("u-1", "EMPLEADO", "e@f.com", token_type="refresh")
-        payload = jwt.decode(token, TEST_SECRET, algorithms=[TEST_ALGORITHM])
+        payload = jwt.decode(token, TEST_PUBLIC_KEY, algorithms=[TEST_ALGORITHM])
         assert payload["token_type"] == "refresh"
 
 

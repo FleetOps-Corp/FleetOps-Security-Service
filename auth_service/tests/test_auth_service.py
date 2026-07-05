@@ -149,8 +149,13 @@ class TestLogin:
         mock_repo.find_by_email.return_value = user
         mock_hasher.verify.return_value = True
         result = await auth_service.login("emp@fleet.com", "password123")
-        assert isinstance(result, str)
-        assert result.count(".") == 2
+        
+        assert isinstance(result, TokenPair)
+        assert isinstance(result.access_token, str)
+        assert isinstance(result.refresh_token, str)
+
+        assert result.access_token.count(".") == 2
+        assert result.refresh_token.count(".") == 2
 
     @pytest.mark.asyncio
     async def test_login_returns_token_pair_with_access_and_refresh_tokens(self, auth_service, mock_repo, mock_hasher):
@@ -220,9 +225,9 @@ class TestLogin:
         mock_repo.find_by_email.return_value = user
         mock_hasher.verify.return_value = True
         # Act
-        token = await auth_service.login("emp@fleet.com", "pass")
+        tokens = await auth_service.login("emp@fleet.com", "pass")
         # Assert — decode "from outside" using the PUBLIC key, like a real verifier
-        payload = pyjwt.decode(token, test_public_key, algorithms=[TEST_ALGORITHM])
+        payload = pyjwt.decode(tokens.access_token, test_public_key, algorithms=[TEST_ALGORITHM])
         assert payload["sub"] == user_id
 
     @pytest.mark.asyncio
@@ -232,7 +237,7 @@ class TestLogin:
         mock_repo.find_by_email.return_value = user
         mock_hasher.verify.return_value = True
         # Act
-        token = await auth_service.login("emp@fleet.com", "pass")
+        tokens = await auth_service.login("emp@fleet.com", "pass")
         # Assert
-        payload = pyjwt.decode(token, test_public_key, algorithms=[TEST_ALGORITHM])
+        payload = pyjwt.decode(tokens.access_token, test_public_key, algorithms=[TEST_ALGORITHM])
         assert payload["role"] == "ADMINISTRADOR"
