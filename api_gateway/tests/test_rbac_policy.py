@@ -137,36 +137,6 @@ class TestRBACPolicyEvaluate:
         # Assert
         assert result.authorized is True
 
-    def test_evaluate_empleado_can_access_asignaciones(self, policy: RBACPolicy):
-        # Arrange — SAD §1: basic employee accesses their assignments
-        path = f"{settings.assignments_service_prefix}/my-route"
-        # Act
-        result = policy.evaluate(path=path, user_role=Role.EMPLEADO.value)
-        # Assert
-        assert result.authorized is True
-
-    def test_evaluate_empleado_incidentes_can_access_incidentes(self, policy: RBACPolicy):
-        # Arrange
-        path = f"{settings.incidents_service_prefix}/incident-007"
-        # Act
-        result = policy.evaluate(
-            path=path,
-            user_role=Role.EMPLEADO_INCIDENTES.value,
-        )
-        # Assert
-        assert result.authorized is True
-
-    def test_evaluate_empleado_mantenimiento_can_access_mantenimiento(self, policy: RBACPolicy):
-        # Arrange
-        path = f"{settings.maintenance_service_prefix}/preventive/schedule"
-        # Act
-        result = policy.evaluate(
-            path=path,
-            user_role=Role.EMPLEADO_MANTENIMIENTO.value,
-        )
-        # Assert
-        assert result.authorized is True
-
     def test_evaluate_administrador_can_access_reportes(self, policy: RBACPolicy):
         # Arrange — SAD §1: admin generates strategic reports
         path = f"{settings.reports_service_prefix}/q1-strategic"
@@ -199,15 +169,6 @@ class TestRBACPolicyEvaluate:
         # Assert
         assert result.authorized is False
 
-    def test_evaluate_empleado_mantenimiento_cannot_access_incidentes(self, policy: RBACPolicy):
-        # Arrange — maintenance employee cannot manage incidents
-        path = f"{settings.incidents_service_prefix}/list"
-        result = policy.evaluate(
-            path=path,
-            user_role=Role.EMPLEADO_MANTENIMIENTO.value,
-        )
-        # Assert
-        assert result.authorized is False
 
     def test_evaluate_empleado_incidentes_cannot_access_mantenimiento(self, policy: RBACPolicy):
         path = f"{settings.maintenance_service_prefix}/history"
