@@ -169,7 +169,6 @@ class TestRBACPolicyEvaluate:
         # Assert
         assert result.authorized is False
 
-
     def test_evaluate_empleado_incidentes_cannot_access_mantenimiento(self, policy: RBACPolicy):
         path = f"{settings.maintenance_service_prefix}/history"
         result = policy.evaluate(
