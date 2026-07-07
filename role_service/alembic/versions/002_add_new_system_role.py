@@ -5,7 +5,9 @@ Revises: 001
 Create Date: 2026-07-06 00:00:00.000000
 """
 from datetime import datetime, timezone
+
 import sqlalchemy as sa
+
 from alembic import op
 
 # 🔢 AHORA USAMOS NÚMEROS LIMPIOS Y SECUENCIALES:
