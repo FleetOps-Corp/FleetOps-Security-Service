@@ -20,7 +20,7 @@ class TestRoleName:
             "ADMINISTRADOR",
             "EMPLEADO_ASIGNACIONES",
             "EMPLEADO_REPORTES",
-            "EMPLEADO_VEHICULOS"
+            "EMPLEADO_VEHICULOS",
         }
 
     def test_role_name_is_string(self):
