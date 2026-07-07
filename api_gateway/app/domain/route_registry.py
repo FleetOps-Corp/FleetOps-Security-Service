@@ -35,6 +35,9 @@ class Role(str, Enum):
     EMPLEADO = "EMPLEADO"
     EMPLEADO_MANTENIMIENTO = "EMPLEADO_MANTENIMIENTO"
     EMPLEADO_INCIDENTES = "EMPLEADO_INCIDENTES"
+    EMPLEADO_VEHICULOS = "EMPLEADO_VEHICULOS"
+    EMPLEADO_ASIGNACIONES = "EMPLEADO_ASIGNACIONES"
+    EMPLEADO_REPORTES = "EMPLEADO_REPORTES"
     ADMINISTRADOR = "ADMINISTRADOR"
 
 
@@ -127,6 +130,8 @@ class RouteRegistry:
                     {
                         Role.EMPLEADO_MANTENIMIENTO,
                         Role.EMPLEADO_INCIDENTES,
+                        Role.EMPLEADO_ASIGNACIONES,
+                        Role.EMPLEADO_REPORTES,
                         Role.ADMINISTRADOR,
                     }
                 ),
@@ -141,7 +146,8 @@ class RouteRegistry:
                 upstream_url_key="assignments_service_url",
                 allowed_roles=frozenset(
                     {
-                        Role.EMPLEADO,
+                        Role.EMPLEADO_VEHICULOS,
+                        Role.EMPLEADO_REPORTES,
                         Role.ADMINISTRADOR,
                     }
                 ),
@@ -156,7 +162,10 @@ class RouteRegistry:
                 upstream_url_key="incidents_service_url",
                 allowed_roles=frozenset(
                     {
-                        Role.EMPLEADO_INCIDENTES,
+                        Role.EMPLEADO_VEHICULOS,
+                        Role.EMPLEADO_MANTENIMIENTO,
+                        Role.EMPLEADO_ASIGNACIONES,
+                        Role.EMPLEADO_REPORTES,
                         Role.ADMINISTRADOR,
                     }
                 ),
@@ -171,7 +180,8 @@ class RouteRegistry:
                 upstream_url_key="maintenance_service_url",
                 allowed_roles=frozenset(
                     {
-                        Role.EMPLEADO_MANTENIMIENTO,
+                        Role.EMPLEADO_VEHICULOS,
+                        Role.EMPLEADO_REPORTES,
                         Role.ADMINISTRADOR,
                     }
                 ),
