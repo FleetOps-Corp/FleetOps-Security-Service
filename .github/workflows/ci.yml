@@ -162,7 +162,11 @@ jobs:
             --cov-fail-under=${{ env.COVERAGE_THRESHOLD }} \
             --tb=short \
             -v
-
+      - name: Debug coverage files
+        run: |
+          pwd
+          ls -la
+          find . -name "coverage.xml"
       - name: Upload coverage report
         if: always()
         uses: actions/upload-artifact@v4
