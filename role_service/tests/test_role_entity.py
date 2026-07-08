@@ -18,6 +18,9 @@ class TestRoleName:
             "EMPLEADO_MANTENIMIENTO",
             "EMPLEADO_INCIDENTES",
             "ADMINISTRADOR",
+            "EMPLEADO_ASIGNACIONES",
+            "EMPLEADO_REPORTES",
+            "EMPLEADO_VEHICULOS",
         }
 
     def test_role_name_is_string(self):
