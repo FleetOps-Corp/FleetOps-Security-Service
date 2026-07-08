@@ -1,0 +1,77 @@
+name: CD — Continuous Deployment
+
+on:
+  push:
+    branches:
+      - master
+
+concurrency:
+  group: cd-master
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    name: Build, Push & Deploy
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build & Push — api_gateway
+        uses: docker/build-push-action@v6
+        with:
+          context: ./api_gateway
+          file: ./api_gateway/Dockerfile
+          push: true
+          tags: |
+            ${{ secrets.DOCKERHUB_USERNAME }}/fleetops-api_gateway:latest
+            ${{ secrets.DOCKERHUB_USERNAME }}/fleetops-api_gateway:${{ github.sha }}
+
+      - name: Build & Push — auth_service
+        uses: docker/build-push-action@v6
+        with:
+          context: ./auth_service
+          file: ./auth_service/Dockerfile
+          push: true
+          tags: |
+            ${{ secrets.DOCKERHUB_USERNAME }}/fleetops-auth_service:latest
+            ${{ secrets.DOCKERHUB_USERNAME }}/fleetops-auth_service:${{ github.sha }}
+
+      - name: Build & Push — role_service
+        uses: docker/build-push-action@v6
+        with:
+          context: ./role_service
+          file: ./role_service/Dockerfile
+          push: true
+          tags: |
+            ${{ secrets.DOCKERHUB_USERNAME }}/fleetops-role_service:latest
+            ${{ secrets.DOCKERHUB_USERNAME }}/fleetops-role_service:${{ github.sha }}
+
+      - name: Deploy to EC2
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            cd ~/fleetops-security
+
+            docker compose -f docker-compose.prod.yml down --remove-orphans || true
+
+            docker compose -f docker-compose.prod.yml pull
+
+            docker compose -f docker-compose.prod.yml up -d
+
+            sleep 30
+
+            curl -f http://localhost:${GATEWAY_PORT}/health && echo "API Gateway UP"
