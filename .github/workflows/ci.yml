@@ -185,3 +185,33 @@ jobs:
           tags: fleetops-${{ matrix.service }}:ci-${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+  # ===========================================================================
+  # 3. SONARCLOUD
+  # ===========================================================================
+  sonar:
+    name: SonarCloud Analysis
+    needs: quality-gate
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download coverage artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: coverage-artifacts
+
+      - name: Verify downloaded artifacts
+        run: |
+          echo "Artifacts descargados:"
+          find coverage-artifacts -type f
+
+      - name: SonarCloud Scan
+        uses: SonarSource/sonarqube-scan-action@master
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: https://sonarcloud.io
