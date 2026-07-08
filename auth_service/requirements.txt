@@ -19,7 +19,7 @@ passlib[bcrypt]==1.7.4
 bcrypt==4.2.0
 
 # JWT generation (SAD §7: session token)
-PyJWT==2.9.0
+# PyJWT==2.9.0
 
 # Redis client for session cache (SAD pág. 9: session caching)
 redis==5.2.0
@@ -43,3 +43,5 @@ mypy==2.1.0
 
 # Architecture dependency validation
 import-linter==2.11
+
+PyJWT[crypto]>=2.8.0
