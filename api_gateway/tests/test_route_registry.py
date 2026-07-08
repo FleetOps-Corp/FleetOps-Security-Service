@@ -157,7 +157,7 @@ class TestRouteRegistry:
 
     def test_find_route_matches_incidentes(self):
         # Arrange
-        path = f"{settings.incidents_service_prefix}/789/detail"
+        # path = f"{settings.incidents_service_prefix}/789/detail"
         # Act
         result = self.registry.find_route("api/incidents/789/detail")
         # Assert
