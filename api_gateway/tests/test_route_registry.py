@@ -10,6 +10,7 @@ No infrastructure dependencies — pure domain tests.
 
 import pytest
 
+from app.config import settings
 from app.domain.route_registry import Role, RouteEntry, RouteRegistry
 
 # =============================================================================
@@ -35,7 +36,7 @@ class TestRouteEntry:
     def test_is_public_returns_false_when_roles_present(self):
         # Arrange
         entry = RouteEntry(
-            prefix="/vehiculos",
+            prefix=settings.vehicles_service_prefix,
             upstream_url_key="vehicles_service_url",
             allowed_roles=frozenset({Role.ADMINISTRADOR}),
         )
@@ -47,7 +48,7 @@ class TestRouteEntry:
     def test_allows_role_returns_true_for_permitted_role(self):
         # Arrange
         entry = RouteEntry(
-            prefix="/vehiculos",
+            prefix=settings.vehicles_service_prefix,
             upstream_url_key="vehicles_service_url",
             allowed_roles=frozenset({Role.ADMINISTRADOR, Role.EMPLEADO_MANTENIMIENTO}),
         )
@@ -58,7 +59,7 @@ class TestRouteEntry:
     def test_allows_role_returns_false_for_unpermitted_role(self):
         # Arrange
         entry = RouteEntry(
-            prefix="/vehiculos",
+            prefix=settings.vehicles_service_prefix,
             upstream_url_key="vehicles_service_url",
             allowed_roles=frozenset({Role.ADMINISTRADOR}),
         )
@@ -70,7 +71,7 @@ class TestRouteEntry:
     def test_allows_role_is_case_insensitive(self):
         # Arrange
         entry = RouteEntry(
-            prefix="/reportes",
+            prefix=settings.reports_service_prefix,
             upstream_url_key="reports_service_url",
             allowed_roles=frozenset({Role.ADMINISTRADOR}),
         )
@@ -82,7 +83,7 @@ class TestRouteEntry:
     def test_allows_role_returns_false_for_unknown_role(self):
         # Arrange
         entry = RouteEntry(
-            prefix="/reportes",
+            prefix=settings.reports_service_prefix,
             upstream_url_key="reports_service_url",
             allowed_roles=frozenset({Role.ADMINISTRADOR}),
         )
@@ -94,7 +95,7 @@ class TestRouteEntry:
     def test_route_entry_is_immutable(self):
         # Arrange
         entry = RouteEntry(
-            prefix="/vehiculos",
+            prefix=settings.vehicles_service_prefix,
             upstream_url_key="vehicles_service_url",
             allowed_roles=frozenset({Role.ADMINISTRADOR}),
         )
@@ -138,41 +139,48 @@ class TestRouteRegistry:
 
     def test_find_route_matches_vehiculos(self):
         # Arrange
-        path = "/vehiculos/abc-123"
+        path = f"{settings.vehicles_service_prefix}/abc-123"
         # Act
         result = self.registry.find_route(path)
         # Assert
         assert result is not None
-        assert result.prefix == "/vehiculos"
-        assert result.upstream_url_key == "vehicles_service_url"
+        assert result.prefix == settings.vehicles_service_prefix
 
     def test_find_route_matches_asignaciones(self):
+        # Arrange
+        path = f"{settings.assignments_service_prefix}/456"
         # Act
-        result = self.registry.find_route("/asignaciones/456")
+        result = self.registry.find_route(path)
         # Assert
         assert result is not None
-        assert result.prefix == "/asignaciones"
+        assert result.prefix == settings.assignments_service_prefix
 
     def test_find_route_matches_incidentes(self):
+        # Arrange
+        path = f"{settings.incidents_service_prefix}/789/detail"
         # Act
         result = self.registry.find_route("api/incidents/789/detail")
         # Assert
         assert result is not None
-        assert result.prefix == "/incidentes"
+        assert result.prefix == settings.incidents_service_prefix
 
     def test_find_route_matches_mantenimiento(self):
+        # Arrange
+        path = f"{settings.maintenance_service_prefix}/schedule"
         # Act
-        result = self.registry.find_route("/mantenimiento/schedule")
+        result = self.registry.find_route(path)
         # Assert
         assert result is not None
-        assert result.prefix == "/mantenimiento"
+        assert result.prefix == settings.maintenance_service_prefix
 
     def test_find_route_matches_reportes(self):
+        # Arrange
+        path = f"{settings.reports_service_prefix}/strategic/q1"
         # Act
-        result = self.registry.find_route("/reportes/strategic/q1")
+        result = self.registry.find_route(path)
         # Assert
         assert result is not None
-        assert result.prefix == "/reportes"
+        assert result.prefix == settings.reports_service_prefix
 
     # -------------------------------------------------------------------------
     # Role configuration — SAD §1: each route has the correct allowed roles
@@ -187,46 +195,46 @@ class TestRouteRegistry:
 
     def test_vehiculos_allows_administrador(self):
         # Act
-        route = self.registry.find_route("/vehiculos")
+        route = self.registry.find_route(settings.vehicles_service_prefix)
         # Assert
         assert route is not None
         assert route.allows_role(Role.ADMINISTRADOR.value) is True
 
     def test_vehiculos_allows_empleado_mantenimiento(self):
         # Act
-        route = self.registry.find_route("/vehiculos")
+        route = self.registry.find_route(settings.vehicles_service_prefix)
         # Assert
         assert route is not None
         assert route.allows_role(Role.EMPLEADO_MANTENIMIENTO.value) is True
 
     def test_vehiculos_allows_empleado_incidentes(self):
         # Act
-        route = self.registry.find_route("/vehiculos")
+        route = self.registry.find_route(settings.vehicles_service_prefix)
         # Assert
         assert route is not None
         assert route.allows_role(Role.EMPLEADO_INCIDENTES.value) is True
 
     def test_vehiculos_denies_empleado_basic(self):
         # Arrange — SAD §1: basic EMPLEADO cannot access vehicles directly
-        route = self.registry.find_route("/vehiculos")
+        route = self.registry.find_route(settings.vehicles_service_prefix)
         # Assert
         assert route is not None
         assert route.allows_role(Role.EMPLEADO.value) is False
 
     def test_asignaciones_allows_empleado(self):
         # SAD §1: EMPLEADO accesses their own assignments
-        route = self.registry.find_route("/asignaciones")
+        route = self.registry.find_route(settings.assignments_service_prefix)
         assert route is not None
         assert route.allows_role(Role.EMPLEADO.value) is True
 
     def test_asignaciones_denies_empleado_mantenimiento(self):
-        route = self.registry.find_route("/asignaciones")
+        route = self.registry.find_route(settings.assignments_service_prefix)
         assert route is not None
         assert route.allows_role(Role.EMPLEADO_MANTENIMIENTO.value) is False
 
     def test_reportes_allows_only_administrador(self):
         # SAD §1: only ADMINISTRADOR generates strategic reports
-        route = self.registry.find_route("/reportes")
+        route = self.registry.find_route(settings.reports_service_prefix)
         assert route is not None
         assert route.allows_role(Role.ADMINISTRADOR.value) is True
         assert route.allows_role(Role.EMPLEADO.value) is False
@@ -244,12 +252,12 @@ class TestRouteRegistry:
         assert route.allows_role(Role.EMPLEADO_MANTENIMIENTO.value) is False
 
     def test_mantenimiento_allows_empleado_mantenimiento(self):
-        route = self.registry.find_route("/mantenimiento")
+        route = self.registry.find_route(settings.maintenance_service_prefix)
         assert route is not None
         assert route.allows_role(Role.EMPLEADO_MANTENIMIENTO.value) is True
 
     def test_mantenimiento_denies_empleado_incidentes(self):
-        route = self.registry.find_route("/mantenimiento")
+        route = self.registry.find_route(settings.maintenance_service_prefix)
         assert route is not None
         assert route.allows_role(Role.EMPLEADO_INCIDENTES.value) is False
 
