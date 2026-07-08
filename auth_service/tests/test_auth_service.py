@@ -149,7 +149,7 @@ class TestLogin:
         mock_repo.find_by_email.return_value = user
         mock_hasher.verify.return_value = True
         result = await auth_service.login("emp@fleet.com", "password123")
-        
+
         assert isinstance(result, TokenPair)
         assert isinstance(result.access_token, str)
         assert isinstance(result.refresh_token, str)
