@@ -162,7 +162,7 @@ class TestRouteRegistry:
         result = self.registry.find_route("api/incidents/789/detail")
         # Assert
         assert result is not None
-        assert result.prefix == settings.incidents_service_prefix
+        assert result.prefix == "api/incidents"
 
     def test_find_route_matches_mantenimiento(self):
         # Arrange
