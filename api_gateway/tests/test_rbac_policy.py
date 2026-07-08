@@ -147,10 +147,10 @@ class TestRBACPolicyEvaluate:
 
     def test_evaluate_empleado_incidentes_can_access_incidentes(self, policy: RBACPolicy):
         # Arrange
-        path = f"{settings.incidents_service_prefix}/incident-007"
+        # path = f"{settings.incidents_service_prefix}/incident-007"
         # Act
         result = policy.evaluate(
-            path=path,
+            path="api/incidents/incident-007",
             user_role=Role.EMPLEADO_INCIDENTES.value,
         )
         # Assert
