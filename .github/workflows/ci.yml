@@ -204,26 +204,20 @@ jobs:
         with:
           fetch-depth: 0
 
-      # - name: Download coverage artifacts
-      #   uses: actions/download-artifact@v4
-      #   with:
-      #     merge-multiple: true
-      #     path: coverage-artifacts
-          
-      # - run: find coverage-artifacts
+      - name: Download coverage artifacts
+        uses: actions/download-artifact@v4
+        with:
+          merge-multiple: true
+          path: coverage-artifacts
 
-      # - name: Verify downloaded artifacts
-      #   run: |
-      #     echo "Artifacts descargados:"
-      #     find coverage-artifacts -type f
-
-      - name: Debug coverage
+      - name: Debug artifacts
         run: |
-          echo "Coverage XML encontrados:"
-          find . -name "coverage.xml"      
+          echo "Contenido descargado:"
+          ls -R coverage-artifacts || true
+          find coverage-artifacts || true
 
       - name: SonarCloud Scan
-        uses: SonarSource/sonarqube-scan-action@master
+        uses: SonarSource/sonarqube-scan-action@v5
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: https://sonarcloud.io
