@@ -217,6 +217,11 @@ jobs:
       #     echo "Artifacts descargados:"
       #     find coverage-artifacts -type f
 
+      - name: Debug coverage
+        run: |
+          echo "Coverage XML encontrados:"
+          find . -name "coverage.xml"      
+
       - name: SonarCloud Scan
         uses: SonarSource/sonarqube-scan-action@master
         env:
