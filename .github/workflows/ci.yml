@@ -207,6 +207,7 @@ jobs:
       - name: Download coverage artifacts
         uses: actions/download-artifact@v4
         with:
+          pattern: coverage-report-*
           merge-multiple: true
           path: coverage-artifacts
 
