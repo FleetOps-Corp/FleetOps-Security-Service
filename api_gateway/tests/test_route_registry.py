@@ -155,7 +155,7 @@ class TestRouteRegistry:
 
     def test_find_route_matches_incidentes(self):
         # Act
-        result = self.registry.find_route("/incidentes/789/detail")
+        result = self.registry.find_route("api/incidents/789/detail")
         # Assert
         assert result is not None
         assert result.prefix == "/incidentes"
@@ -234,12 +234,12 @@ class TestRouteRegistry:
         assert route.allows_role(Role.EMPLEADO_INCIDENTES.value) is False
 
     def test_incidentes_allows_empleado_incidentes(self):
-        route = self.registry.find_route("/incidentes")
+        route = self.registry.find_route("api/incidents")
         assert route is not None
         assert route.allows_role(Role.EMPLEADO_INCIDENTES.value) is True
 
     def test_incidentes_denies_empleado_mantenimiento(self):
-        route = self.registry.find_route("/incidentes")
+        route = self.registry.find_route("api/incidents")
         assert route is not None
         assert route.allows_role(Role.EMPLEADO_MANTENIMIENTO.value) is False
 

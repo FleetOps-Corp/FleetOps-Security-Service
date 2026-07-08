@@ -145,7 +145,7 @@ class TestRBACPolicyEvaluate:
     def test_evaluate_empleado_incidentes_can_access_incidentes(self, policy: RBACPolicy):
         # Act
         result = policy.evaluate(
-            path="/incidentes/incident-007",
+            path="api/incidents/incident-007",
             user_role=Role.EMPLEADO_INCIDENTES.value,
         )
         # Assert
