@@ -25,10 +25,15 @@ from app.infrastructure.models import UserModel
 logger = logging.getLogger(__name__)
 
 _CACHE_KEY_PREFIX = "auth:user:email:"
+_CACHE_ID_PREFIX = "auth:user:id:"
 
 
 def _cache_key(email: str) -> str:
     return f"{_CACHE_KEY_PREFIX}{email.lower()}"
+
+
+def _cache_id_key(user_id: str) -> str:
+    return f"{_CACHE_ID_PREFIX}{user_id}"
 
 
 class UserRepository:
@@ -127,6 +132,39 @@ class UserRepository:
                 json.dumps(self._to_cache_dict(user)),
             )
             logger.debug("Cached user: %s (TTL=%ds)", email_lower, settings.redis_session_cache_ttl)
+        except Exception as exc:
+            logger.warning("Redis write error (non-fatal): %s", exc)
+
+        return user
+
+    async def find_by_id(self, user_id: str) -> Optional[User]:
+        """Finds a user by UUID, using Redis cache first and PostgreSQL as fallback."""
+        key = _cache_id_key(user_id)
+
+        try:
+            cached = await self._redis.get(key)
+            if cached:
+                logger.debug("Cache HIT for user id: %s", user_id)
+                return self._from_cache_dict(json.loads(cached))
+        except Exception as exc:
+            logger.warning("Redis read error (falling back to DB): %s", exc)
+
+        stmt = select(UserModel).where(UserModel.id == user_id).options(joinedload(UserModel.role))
+        result = await self._session.execute(stmt)
+        model = result.scalar_one_or_none()
+
+        if model is None:
+            return None
+
+        user = self._to_domain(model)
+
+        try:
+            await self._redis.setex(
+                key,
+                settings.redis_session_cache_ttl,
+                json.dumps(self._to_cache_dict(user)),
+            )
+            logger.debug("Cached user by id: %s (TTL=%ds)", user_id, settings.redis_session_cache_ttl)
         except Exception as exc:
             logger.warning("Redis write error (non-fatal): %s", exc)
 

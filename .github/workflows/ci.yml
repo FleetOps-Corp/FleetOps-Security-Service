@@ -9,7 +9,7 @@ name: CI — Monorepo PR Validation
 on:
   pull_request:
     branches:
-      - main
+      - master
       - develop
     
     paths-ignore:
@@ -129,7 +129,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install ruff mypy pytest pytest-cov alembic asyncpg psycopg2-binary
+          pip install ruff mypy pytest pytest-cov httpx alembic asyncpg psycopg2-binary
           if [ -f "requirements-dev.txt" ]; then
             pip install -r requirements-dev.txt
           elif [ -f "requirements.txt" ]; then
@@ -162,7 +162,11 @@ jobs:
             --cov-fail-under=${{ env.COVERAGE_THRESHOLD }} \
             --tb=short \
             -v
-
+      - name: Debug coverage files
+        run: |
+          pwd
+          ls -la
+          find . -name "coverage.xml"
       - name: Upload coverage report
         if: always()
         uses: actions/upload-artifact@v4
@@ -203,15 +207,23 @@ jobs:
       - name: Download coverage artifacts
         uses: actions/download-artifact@v4
         with:
+          pattern: coverage-report-*
           path: coverage-artifacts
+          merge-multiple: false
 
-      - name: Verify downloaded artifacts
+      - name: Debug artifacts
         run: |
-          echo "Artifacts descargados:"
-          find coverage-artifacts -type f
+          echo "Contenido descargado:"
+          ls -R coverage-artifacts || true
+          find coverage-artifacts || true
+
+      - name: Debug coverage files
+        run: |
+          echo "Coverage encontrados:"
+          find coverage-artifacts -name "coverage.xml"
 
       - name: SonarCloud Scan
-        uses: SonarSource/sonarqube-scan-action@master
+        uses: SonarSource/sonarqube-scan-action@v5
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: https://sonarcloud.io

@@ -243,6 +243,66 @@ class TestSave:
 # =============================================================================
 
 
+class TestFindById:
+    @pytest.mark.asyncio
+    async def test_returns_user_from_redis_cache_on_id_hit(self):
+        user = _make_domain_user()
+        cached_data = {
+            "id": user.id,
+            "email": user.email,
+            "hashed_password": user.hashed_password,
+            "role": user.role.value,
+            "is_active": user.is_active,
+            "created_at": user.created_at.isoformat(),
+            "updated_at": user.updated_at.isoformat(),
+        }
+        redis = AsyncMock()
+        redis.get = AsyncMock(return_value=json.dumps(cached_data))
+        redis.setex = AsyncMock()
+        repo = _make_repo(redis=redis)
+
+        result = await repo.find_by_id(user.id)
+
+        assert result is not None
+        assert result.id == user.id
+        repo._session.execute.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_queries_db_on_id_cache_miss(self):
+        redis = AsyncMock()
+        redis.get = AsyncMock(return_value=None)
+        redis.setex = AsyncMock()
+
+        model = _make_user_model()
+        session = AsyncMock()
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none.return_value = model
+        session.execute = AsyncMock(return_value=mock_result)
+
+        repo = _make_repo(session=session, redis=redis)
+
+        result = await repo.find_by_id("model-uuid-1")
+
+        assert result is not None
+        session.execute.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_returns_none_when_user_not_found_by_id(self):
+        redis = AsyncMock()
+        redis.get = AsyncMock(return_value=None)
+
+        session = AsyncMock()
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none.return_value = None
+        session.execute = AsyncMock(return_value=mock_result)
+
+        repo = _make_repo(session=session, redis=redis)
+
+        result = await repo.find_by_id("missing-id")
+
+        assert result is None
+
+
 class TestExistsByEmail:
     @pytest.mark.asyncio
     async def test_returns_true_when_user_exists(self):

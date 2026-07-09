@@ -21,6 +21,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.schemas import (
     ErrorResponse,
     LoginRequest,
+    RefreshTokenRequest,
     RegisterRequest,
     TokenResponse,
     UserResponse,
@@ -148,13 +149,42 @@ async def login(
     """
     auth_svc = _make_auth_service(session, redis_client)
     try:
-        token = await auth_svc.login(
+        tokens = await auth_svc.login(
             email=body.email,
             plain_password=body.password,
         )
         logger.info("Successful login for email: %s", body.email)
         return TokenResponse(
-            access_token=token,
+            access_token=tokens.access_token,
+            refresh_token=tokens.refresh_token,
+            token_type="bearer",
+            expires_in=settings.jwt_expiration_minutes * 60,
+        )
+    except AuthError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=str(exc),
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+
+@router.post(
+    "/refresh",
+    response_model=TokenResponse,
+    responses={401: {"model": ErrorResponse}},
+)
+async def refresh(
+    body: RefreshTokenRequest,
+    session: AsyncSession = Depends(get_db_session),
+    redis_client: aioredis.Redis = Depends(get_redis),
+) -> TokenResponse:
+    """Issues a new access token from a valid refresh token."""
+    auth_svc = _make_auth_service(session, redis_client)
+    try:
+        access_token = await auth_svc.refresh_access_token(body.refresh_token)
+        return TokenResponse(
+            access_token=access_token,
+            refresh_token=body.refresh_token,
             token_type="bearer",
             expires_in=settings.jwt_expiration_minutes * 60,
         )

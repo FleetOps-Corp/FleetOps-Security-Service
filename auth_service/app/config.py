@@ -24,6 +24,7 @@ class AuthSettings(BaseSettings):
     jwt_public_key_path: str
     jwt_algorithm: str = "RS256"
     jwt_expiration_minutes: int = 60
+    jwt_refresh_expiration_minutes: int = 10080
 
     # --- Server ---
     auth_service_port: int = 8001
