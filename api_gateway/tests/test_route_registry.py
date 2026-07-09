@@ -226,7 +226,7 @@ class TestRouteRegistry:
     # --- INCIDENTES ---
     # Es consumido por Mantenimiento, Vehículos, Asignaciones,
     # Reportes y por sí mismo para reenvíos internos.
-    
+
     def test_incidentes_allows_consumidores(self):
         route = self.registry.find_route(settings.incidents_service_prefix)
         assert route is not None
