@@ -15,11 +15,12 @@ from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+from fastapi import FastAPI
+from httpx import ASGITransport, AsyncClient
+
 from app.api import routes
 from app.domain.auth_service import AuthDomainService, AuthError, RegistrationError, TokenPair
 from app.domain.user import User, UserRole
-from fastapi import FastAPI
-from httpx import ASGITransport, AsyncClient
 
 
 def _make_user(
