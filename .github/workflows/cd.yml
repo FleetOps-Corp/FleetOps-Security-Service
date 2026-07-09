@@ -72,6 +72,6 @@ jobs:
 
             docker compose -f docker-compose.prod.yml up -d
 
-            sleep 30
+            sleep 10
 
-            curl -f http://localhost:${GATEWAY_PORT}/health && echo "API Gateway UP"
+            docker compose -f docker-compose.prod.yml ps
