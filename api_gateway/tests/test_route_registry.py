@@ -223,7 +223,9 @@ class TestRouteRegistry:
         assert route.allows_role(Role.EMPLEADO_MANTENIMIENTO.value) is False
         assert route.allows_role(Role.EMPLEADO_INCIDENTES.value) is False
 
-    # --- INCIDENTES (Es consumido por Mantenimiento, Vehiculos, Asignaciones y Reportes, y por si mismo para reenvíos internos) ---
+    # --- INCIDENTES ---
+    # Es consumido por Mantenimiento, Vehículos, Asignaciones,
+    # Reportes y por sí mismo para reenvíos internos.
     def test_incidentes_allows_consumidores(self):
         route = self.registry.find_route(settings.incidents_service_prefix)
         assert route is not None
