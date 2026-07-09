@@ -422,3 +422,113 @@ class TestFindRolesByUserIdAdditionalCacheMiss:
 
         assert len(result) == 1
         redis.setex.assert_called_once()
+
+
+# =============================================================================
+# update_user_current_role
+# =============================================================================
+
+
+class TestUpdateUserCurrentRole:
+    @pytest.mark.asyncio
+    async def test_returns_false_when_user_does_not_exist(self):
+        # Arrange — email lookup returns None (user not found), UPDATE affects 0 rows
+        session = AsyncMock()
+        email_result = MagicMock()
+        email_result.scalar_one_or_none.return_value = None
+        update_result = MagicMock()
+        update_result.rowcount = 0
+        session.execute = AsyncMock(side_effect=[email_result, update_result])
+        session.flush = AsyncMock()
+
+        redis = AsyncMock()
+        redis.delete = AsyncMock()
+
+        repo = _make_repo(session=session, redis=redis)
+        result = await repo.update_user_current_role("ghost-user", "role-id-1")
+
+        assert result is False
+        redis.delete.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_returns_true_and_invalidates_role_and_auth_cache_on_success(self):
+        # Arrange — email lookup finds an email, UPDATE affects 1 row
+        session = AsyncMock()
+        email_result = MagicMock()
+        email_result.scalar_one_or_none.return_value = "User@Example.com "
+        update_result = MagicMock()
+        update_result.rowcount = 1
+        session.execute = AsyncMock(side_effect=[email_result, update_result])
+        session.flush = AsyncMock()
+
+        redis = AsyncMock()
+        redis.delete = AsyncMock()
+
+        repo = _make_repo(session=session, redis=redis)
+        result = await repo.update_user_current_role("u-1", "role-id-2")
+
+        assert result is True
+        assert redis.delete.await_count == 2
+        # Auth cache key must be normalized (lowercase, stripped)
+        called_keys = [call.args[0] for call in redis.delete.await_args_list]
+        assert "auth:user:email:user@example.com" in called_keys
+
+    @pytest.mark.asyncio
+    async def test_success_skips_auth_cache_invalidation_when_email_is_none(self):
+        # Arrange — user exists (UPDATE affects a row) but email lookup returned None
+        session = AsyncMock()
+        email_result = MagicMock()
+        email_result.scalar_one_or_none.return_value = None
+        update_result = MagicMock()
+        update_result.rowcount = 1
+        session.execute = AsyncMock(side_effect=[email_result, update_result])
+        session.flush = AsyncMock()
+
+        redis = AsyncMock()
+        redis.delete = AsyncMock()
+
+        repo = _make_repo(session=session, redis=redis)
+        result = await repo.update_user_current_role("u-1", "role-id-2")
+
+        assert result is True
+        # Only the role cache should be invalidated — no auth cache call
+        redis.delete.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_does_not_fail_when_role_cache_invalidation_redis_unavailable(self):
+        session = AsyncMock()
+        email_result = MagicMock()
+        email_result.scalar_one_or_none.return_value = "user@example.com"
+        update_result = MagicMock()
+        update_result.rowcount = 1
+        session.execute = AsyncMock(side_effect=[email_result, update_result])
+        session.flush = AsyncMock()
+
+        redis = AsyncMock()
+        redis.delete = AsyncMock(side_effect=Exception("Redis role cache down"))
+
+        repo = _make_repo(session=session, redis=redis)
+        result = await repo.update_user_current_role("u-1", "role-id-2")
+
+        # Degraded but successful — Redis failures must not propagate
+        assert result is True
+
+    @pytest.mark.asyncio
+    async def test_does_not_fail_when_auth_cache_invalidation_redis_unavailable(self):
+        session = AsyncMock()
+        email_result = MagicMock()
+        email_result.scalar_one_or_none.return_value = "user@example.com"
+        update_result = MagicMock()
+        update_result.rowcount = 1
+        session.execute = AsyncMock(side_effect=[email_result, update_result])
+        session.flush = AsyncMock()
+
+        redis = AsyncMock()
+        # First delete (role cache) succeeds, second (auth cache) fails
+        redis.delete = AsyncMock(side_effect=[None, Exception("Redis auth cache down")])
+
+        repo = _make_repo(session=session, redis=redis)
+        result = await repo.update_user_current_role("u-1", "role-id-2")
+
+        assert result is True
+        assert redis.delete.await_count == 2

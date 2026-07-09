@@ -30,7 +30,10 @@ class TestUserRole:
             "EMPLEADO",
             "EMPLEADO_MANTENIMIENTO",
             "EMPLEADO_INCIDENTES",
-            "ADMINISTRADOR",
+            "EMPLEADO_VEHICULOS",
+            "EMPLEADO_ASIGNACIONES",
+            "EMPLEADO_REPORTES",
+            "ADMINISTRADOR"
         }
 
     def test_role_is_string_enum(self):

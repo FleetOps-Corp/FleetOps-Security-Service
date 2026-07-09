@@ -20,6 +20,7 @@ class User(Base):
     __tablename__ = "users"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    email: Mapped[str] = mapped_column(String(255), nullable=False)
     role_id: Mapped[str] = mapped_column(String(36), nullable=False)
 
 

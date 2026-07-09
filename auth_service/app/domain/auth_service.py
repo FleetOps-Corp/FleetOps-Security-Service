@@ -155,6 +155,6 @@ class AuthDomainService:
 
         return self._jwt.create_token(
             user_id=user.id,
-            role=user.role.name,
+            role=user.role.value,
             email=user.email,
         )

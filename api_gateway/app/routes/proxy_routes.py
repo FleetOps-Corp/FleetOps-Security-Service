@@ -124,6 +124,8 @@ async def proxy_request(
     upstream_base = _resolve_upstream_url(decision.route_entry.upstream_url_key)
     target_url = f"{upstream_base}{path}"
 
+    logger.info("Target URL: %s", target_url)
+
     logger.info(
         "Proxying request | user_id=%s | role=%s | path=%s → %s",
         user_id,
@@ -142,6 +144,11 @@ async def proxy_request(
         headers["X-User-Role"] = jwt_claims.role
         headers["X-User-Email"] = jwt_claims.email
 
+    logger.info(
+        "Authorization header: %s",
+        headers.get("authorization"),
+    )
+
     try:
         async with httpx.AsyncClient(timeout=30.0) as client:
             upstream_response = await client.request(
@@ -159,11 +166,25 @@ async def proxy_request(
         )
 
         # Step 5: Return upstream response to client
+        response_headers = {}
+
+        logger.info("Upstream headers: %s", dict(upstream_response.headers))
+
+        for header in (
+            "content-type",
+            "content-disposition",
+            "cache-control",
+            "etag",
+            "last-modified",
+            "content-encoding",
+        ):
+            if header in upstream_response.headers:
+                response_headers[header] = upstream_response.headers[header]
+
         return Response(
             content=upstream_response.content,
             status_code=upstream_response.status_code,
-            headers=dict(upstream_response.headers),
-            media_type=upstream_response.headers.get("content-type"),
+            headers=response_headers,
         )
 
     except httpx.RequestError as exc:
