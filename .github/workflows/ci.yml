@@ -9,7 +9,7 @@ name: CI — Monorepo PR Validation
 on:
   pull_request:
     branches:
-      - main
+      - master
       - develop
     
     paths-ignore:
