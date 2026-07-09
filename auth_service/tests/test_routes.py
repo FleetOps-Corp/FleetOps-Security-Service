@@ -15,9 +15,9 @@ from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from auth_service.app.api import routes
-from auth_service.app.domain.auth_service import AuthDomainService, AuthError, RegistrationError, TokenPair
-from auth_service.app.domain.user import User, UserRole
+from app.api import routes
+from app.domain.auth_service import AuthDomainService, AuthError, RegistrationError, TokenPair
+from app.domain.user import User, UserRole
 from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
 
