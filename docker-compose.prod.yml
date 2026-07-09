@@ -83,7 +83,7 @@ services:
   # Responsibilities: POST /auth/register, POST /auth/login, JWT generation
   # ---------------------------------------------------------------------------
   auth_service:
-    image: ${DOCKERHUB_USERNAME}/fleetops-auth_service:latest
+    image: ${DOCKERHUB_USERNAME}/auth-service:latest
     container_name: fleetops_auth_service
     restart: unless-stopped
     env_file:
@@ -95,11 +95,15 @@ services:
       REDIS_PORT: ${REDIS_PORT}
       REDIS_PASSWORD: ${REDIS_PASSWORD}
       REDIS_SESSION_CACHE_TTL: ${REDIS_SESSION_CACHE_TTL}
+      JWT_PRIVATE_KEY_PATH: ${JWT_PRIVATE_KEY_PATH}
+      JWT_PUBLIC_KEY_PATH: ${JWT_PUBLIC_KEY_PATH}
       JWT_SECRET_KEY: ${JWT_SECRET_KEY}
       JWT_ALGORITHM: ${JWT_ALGORITHM}
       JWT_EXPIRATION_MINUTES: ${JWT_EXPIRATION_MINUTES}
       AUTH_SERVICE_PORT: ${AUTH_SERVICE_PORT}
       LOG_LEVEL: ${LOG_LEVEL}
+    volumes:
+      - ./secrets/jwt:/app/app/secrets:ro
     networks:
       - fleetops_security_net
     depends_on:
@@ -156,6 +160,7 @@ services:
     environment:
       AUTH_SERVICE_URL: ${AUTH_SERVICE_URL}
       ROLE_SERVICE_URL: ${ROLE_SERVICE_URL}
+      JWT_PUBLIC_KEY_PATH: ${JWT_PUBLIC_KEY_PATH}
       JWT_SECRET_KEY: ${JWT_SECRET_KEY}
       JWT_ALGORITHM: ${JWT_ALGORITHM}
       GATEWAY_RATE_LIMIT: ${GATEWAY_RATE_LIMIT}
@@ -166,6 +171,8 @@ services:
       MAINTENANCE_SERVICE_URL: ${MAINTENANCE_SERVICE_URL}
       REPORTS_SERVICE_URL: ${REPORTS_SERVICE_URL}
       LOG_LEVEL: ${LOG_LEVEL}
+    volumes:
+      - ./secrets/jwt:/app/app/secrets:ro
     ports:
       - "${GATEWAY_PORT}:${GATEWAY_PORT}"
     networks:
