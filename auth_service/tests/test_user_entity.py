@@ -30,6 +30,9 @@ class TestUserRole:
             "EMPLEADO",
             "EMPLEADO_MANTENIMIENTO",
             "EMPLEADO_INCIDENTES",
+            "EMPLEADO_VEHICULOS",
+            "EMPLEADO_ASIGNACIONES",
+            "EMPLEADO_REPORTES",
             "ADMINISTRADOR",
         }
 

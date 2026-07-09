@@ -184,17 +184,36 @@ class RoleRepository:
     async def update_user_current_role(self, user_id: str, role_id: str) -> bool:
         """
         Ejecuta un UPDATE directo en PostgreSQL para cambiar el rol actual del usuario.
-        Utiliza la sesión compartida del repositorio.
-        Retorna True si el usuario existía y fue modificado, False en caso contrario.
+        Utiliza la sesión compartida del repositorio e invalida las cachés correspondientes.
         """
-        # 1. Usamos la sesión compartida: self._session
+        # 1. Obtener el email del usuario usando el reflejo actualizado
+        email_stmt = select(User.email).where(User.id == user_id)
+        email_result = await self._session.execute(email_stmt)
+        user_email = email_result.scalar_one_or_none()
+
+        # 2. Ejecutar la actualización en PostgreSQL
         stmt = update(User).where(User.id == user_id).values(role_id=role_id)
-
         result = await self._session.execute(stmt)
-
-        # 2. Hacemos un flush para sincronizar el estado actual con Postgres
-        # sin cerrar la transacción general (exactamente como lo haces en save_role)
         await self._session.flush()
 
-        # Si rowcount > 0, significa que el usuario existía y se actualizó con éxito
-        return result.rowcount > 0
+        # Si no se modificó ninguna fila, el usuario no existía
+        if result.rowcount == 0:
+            return False
+
+        # 3. Invalidar la caché de Roles (role:user:<user_id>)
+        try:
+            await self._redis.delete(role_cache_key(user_id))
+            logger.debug("Invalidated role service cache for user_id=%s", user_id)
+        except Exception as exc:
+            logger.warning("Redis role cache invalidation failed (non-fatal): %s", exc)
+
+        # 4. Invalidar la caché de Autenticación (auth:user:email:<email>) usando el email recuperado
+        if user_email:
+            try:
+                auth_cache_key = f"auth:user:email:{user_email.lower().strip()}"
+                await self._redis.delete(auth_cache_key)
+                logger.debug("Invalidated auth service cache for email=%s", user_email)
+            except Exception as exc:
+                logger.warning("Redis auth cache invalidation failed (non-fatal): %s", exc)
+
+        return True

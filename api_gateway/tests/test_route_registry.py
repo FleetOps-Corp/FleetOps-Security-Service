@@ -157,12 +157,12 @@ class TestRouteRegistry:
 
     def test_find_route_matches_incidentes(self):
         # Arrange
-        # path = f"{settings.incidents_service_prefix}/789/detail"
+        path = f"{settings.incidents_service_prefix}/789/detail"
         # Act
-        result = self.registry.find_route("api/incidents/789/detail")
+        result = self.registry.find_route(path)
         # Assert
         assert result is not None
-        assert result.prefix == "api/incidents"
+        assert result.prefix == settings.incidents_service_prefix
 
     def test_find_route_matches_mantenimiento(self):
         # Arrange
@@ -207,13 +207,14 @@ class TestRouteRegistry:
         assert route.allows_role(Role.EMPLEADO_ASIGNACIONES.value) is True
         assert route.allows_role(Role.EMPLEADO_REPORTES.value) is True
 
-    # --- ASIGNACIONES (Es consumido por Vehiculos y Reportes) ---
+    # --- ASIGNACIONES (Es consumido por Vehiculos y Reportes, y por si mismo para reenvíos internos) ---
     def test_asignaciones_allows_consumidores(self):
         route = self.registry.find_route(settings.assignments_service_prefix)
         assert route is not None
         assert route.allows_role(Role.ADMINISTRADOR.value) is True
         assert route.allows_role(Role.EMPLEADO_VEHICULOS.value) is True
         assert route.allows_role(Role.EMPLEADO_REPORTES.value) is True
+        assert route.allows_role(Role.EMPLEADO_ASIGNACIONES.value) is True
 
     def test_asignaciones_denies_no_consumidores(self):
         route = self.registry.find_route(settings.assignments_service_prefix)
@@ -221,50 +222,55 @@ class TestRouteRegistry:
         assert route.allows_role(Role.EMPLEADO.value) is False
         assert route.allows_role(Role.EMPLEADO_MANTENIMIENTO.value) is False
         assert route.allows_role(Role.EMPLEADO_INCIDENTES.value) is False
-        assert route.allows_role(Role.EMPLEADO_ASIGNACIONES.value) is False
 
-    def test_incidentes_allows_empleado_incidentes(self):
-        route = self.registry.find_route("api/incidents")
+    # --- INCIDENTES ---
+    # Es consumido por Mantenimiento, Vehículos, Asignaciones,
+    # Reportes y por sí mismo para reenvíos internos.
+
+    def test_incidentes_allows_consumidores(self):
+        route = self.registry.find_route(settings.incidents_service_prefix)
         assert route is not None
         assert route.allows_role(Role.ADMINISTRADOR.value) is True
         assert route.allows_role(Role.EMPLEADO_MANTENIMIENTO.value) is True
         assert route.allows_role(Role.EMPLEADO_VEHICULOS.value) is True
         assert route.allows_role(Role.EMPLEADO_ASIGNACIONES.value) is True
         assert route.allows_role(Role.EMPLEADO_REPORTES.value) is True
+        assert route.allows_role(Role.EMPLEADO_INCIDENTES.value) is True
 
     def test_incidentes_denies_empleado_mantenimiento(self):
-        route = self.registry.find_route("api/incidents")
+        # Act
+        route = self.registry.find_route(settings.incidents_service_prefix)
+        # Assert
         assert route is not None
         assert route.allows_role(Role.EMPLEADO.value) is False
-        assert route.allows_role(Role.EMPLEADO_INCIDENTES.value) is False
 
-    # --- MANTENIMIENTO (Es consumido por Vehiculos y Reportes) ---
+    # --- MANTENIMIENTO (Es consumido por Vehiculos y Reportes, y por si mismo para reenvíos internos) ---
     def test_mantenimiento_allows_consumidores(self):
         route = self.registry.find_route(settings.maintenance_service_prefix)
         assert route is not None
         assert route.allows_role(Role.ADMINISTRADOR.value) is True
         assert route.allows_role(Role.EMPLEADO_VEHICULOS.value) is True
         assert route.allows_role(Role.EMPLEADO_REPORTES.value) is True
+        assert route.allows_role(Role.EMPLEADO_MANTENIMIENTO.value) is True
 
     def test_mantenimiento_denies_no_consumidores(self):
         route = self.registry.find_route(settings.maintenance_service_prefix)
         assert route is not None
         assert route.allows_role(Role.EMPLEADO.value) is False
-        assert route.allows_role(Role.EMPLEADO_MANTENIMIENTO.value) is False
         assert route.allows_role(Role.EMPLEADO_INCIDENTES.value) is False
         assert route.allows_role(Role.EMPLEADO_ASIGNACIONES.value) is False
 
-    # --- REPORTES (No es consumido por nadie más, solo Admin) ---
-    def test_reportes_allows_only_administrador(self):
+    # --- REPORTES (Solo Admin y el propio Reportes para reenvíos internos) ---
+    def test_reportes_allows_administrador_y_reportes(self):
         route = self.registry.find_route(settings.reports_service_prefix)
         assert route is not None
         assert route.allows_role(Role.ADMINISTRADOR.value) is True
+        assert route.allows_role(Role.EMPLEADO_REPORTES.value) is True
         assert route.allows_role(Role.EMPLEADO.value) is False
         assert route.allows_role(Role.EMPLEADO_MANTENIMIENTO.value) is False
         assert route.allows_role(Role.EMPLEADO_INCIDENTES.value) is False
         assert route.allows_role(Role.EMPLEADO_VEHICULOS.value) is False
         assert route.allows_role(Role.EMPLEADO_ASIGNACIONES.value) is False
-        assert route.allows_role(Role.EMPLEADO_REPORTES.value) is False
 
     # -------------------------------------------------------------------------
     # get_all_routes

@@ -19,11 +19,14 @@ Architecture note: The route registry lives in the Domain layer because
 it encodes business authorization rules, not infrastructure concerns.
 """
 
+import logging
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Optional
 
 from app.config import settings
+
+logger = logging.getLogger(__name__)
 
 
 class Role(str, Enum):
@@ -132,6 +135,7 @@ class RouteRegistry:
                         Role.EMPLEADO_INCIDENTES,
                         Role.EMPLEADO_ASIGNACIONES,
                         Role.EMPLEADO_REPORTES,
+                        Role.EMPLEADO_VEHICULOS,
                         Role.ADMINISTRADOR,
                     }
                 ),
@@ -148,6 +152,7 @@ class RouteRegistry:
                     {
                         Role.EMPLEADO_VEHICULOS,
                         Role.EMPLEADO_REPORTES,
+                        Role.EMPLEADO_ASIGNACIONES,
                         Role.ADMINISTRADOR,
                     }
                 ),
@@ -158,7 +163,7 @@ class RouteRegistry:
             # SAD §1: Empleado de incidentes gestiona incidentes mecánicos o humanos.
             # ------------------------------------------------------------------
             RouteEntry(
-                prefix="api/incidents",
+                prefix=settings.incidents_service_prefix,
                 upstream_url_key="incidents_service_url",
                 allowed_roles=frozenset(
                     {
@@ -166,6 +171,7 @@ class RouteRegistry:
                         Role.EMPLEADO_MANTENIMIENTO,
                         Role.EMPLEADO_ASIGNACIONES,
                         Role.EMPLEADO_REPORTES,
+                        Role.EMPLEADO_INCIDENTES,
                         Role.ADMINISTRADOR,
                     }
                 ),
@@ -182,6 +188,7 @@ class RouteRegistry:
                     {
                         Role.EMPLEADO_VEHICULOS,
                         Role.EMPLEADO_REPORTES,
+                        Role.EMPLEADO_MANTENIMIENTO,
                         Role.ADMINISTRADOR,
                     }
                 ),
@@ -196,6 +203,7 @@ class RouteRegistry:
                 upstream_url_key="reports_service_url",
                 allowed_roles=frozenset(
                     {
+                        Role.EMPLEADO_REPORTES,
                         Role.ADMINISTRADOR,
                     }
                 ),
@@ -205,17 +213,26 @@ class RouteRegistry:
 
     def find_route(self, path: str) -> Optional[RouteEntry]:
         """
-        Finds the first RouteEntry whose prefix matches the beginning of path.
+        Finds the best RouteEntry whose prefix matches the beginning of path.
 
-        Args:
-            path: The request path (e.g. "/vehiculos/123")
-
-        Returns:
-            The matching RouteEntry, or None if no route is registered.
+        Exact prefixes have priority.
+        The root prefix "/" acts as a fallback route.
         """
+        fallback: Optional[RouteEntry] = None
+
         for route in self._routes:
+            if route.prefix == "/":
+                fallback = route
+                continue
+
             if path.startswith(route.prefix):
+                logger.info("Matched route %s -> %s", path, route.prefix)
                 return route
+
+        if fallback is not None:
+            logger.info("Using fallback route '/' for %s", path)
+            return fallback
+
         return None
 
     def get_all_routes(self) -> list[RouteEntry]:

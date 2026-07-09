@@ -49,6 +49,7 @@ def mock_repo() -> AsyncMock:
     repo.assign_role_to_user = AsyncMock(side_effect=lambda a: a)
     repo.remove_role_from_user = AsyncMock(return_value=True)
     repo.role_exists_by_name = AsyncMock(return_value=False)
+    repo.update_user_current_role = AsyncMock(return_value=True)
     return repo
 
 
@@ -159,6 +160,17 @@ class TestAssignRole:
         mock_repo.assign_role_to_user.return_value = assignment
         await svc.assign_role("u-99", "ADMINISTRADOR", "super-admin")
         mock_repo.assign_role_to_user.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_assign_raises_error_when_user_not_found(self, svc, mock_repo):
+        # update_user_current_role returning False means the user_id doesn't exist
+        role = _make_role(name="EMPLEADO", is_active=True)
+        mock_repo.find_role_by_name.return_value = role
+        mock_repo.update_user_current_role.return_value = False
+        with pytest.raises(RoleAssignmentError) as exc_info:
+            await svc.assign_role("ghost-user", "EMPLEADO")
+        assert "ghost-user" in str(exc_info.value)
+        mock_repo.assign_role_to_user.assert_not_called()
 
 
 # =============================================================================
