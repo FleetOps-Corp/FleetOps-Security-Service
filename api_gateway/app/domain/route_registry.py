@@ -163,7 +163,7 @@ class RouteRegistry:
             # SAD §1: Empleado de incidentes gestiona incidentes mecánicos o humanos.
             # ------------------------------------------------------------------
             RouteEntry(
-                prefix=settings.incidents_service_prefix,
+                prefix="api/incidents",
                 upstream_url_key="incidents_service_url",
                 allowed_roles=frozenset(
                     {
