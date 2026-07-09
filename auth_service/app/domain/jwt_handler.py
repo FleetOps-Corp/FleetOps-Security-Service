@@ -31,6 +31,7 @@ class TokenPayload:
     role: str
     email: str
     expires_at: datetime
+    token_type: str = "access"
 
 
 class JWTHandler:
@@ -45,13 +46,21 @@ class JWTHandler:
         public_key: str | None = None,
         algorithm: str | None = None,
         expiration_minutes: int | None = None,
+        refresh_expiration_minutes: int | None = None,
     ) -> None:
         self._private_key = private_key or settings.jwt_private_key
         self._public_key = public_key or settings.jwt_public_key
         self._algorithm = algorithm or settings.jwt_algorithm
         self._expiry_minutes = expiration_minutes or settings.jwt_expiration_minutes
+        self._refresh_expiry_minutes = refresh_expiration_minutes or settings.jwt_refresh_expiration_minutes
 
-    def create_token(self, user_id: str, role: str, email: str) -> str:
+    def create_token(
+        self,
+        user_id: str,
+        role: str,
+        email: str,
+        token_type: str = "access",
+    ) -> str:
         """
         Creates a signed JWT for the given user.
 
@@ -67,7 +76,8 @@ class JWTHandler:
             Signed JWT string.
         """
         now = datetime.now(timezone.utc)
-        expires_at = now + timedelta(minutes=self._expiry_minutes)
+        expiry_minutes = self._refresh_expiry_minutes if token_type == "refresh" else self._expiry_minutes
+        expires_at = now + timedelta(minutes=expiry_minutes)
 
         payload = {
             "sub": user_id,
@@ -75,6 +85,7 @@ class JWTHandler:
             "email": email,
             "iat": now,
             "exp": expires_at,
+            "token_type": token_type,
         }
 
         # Firma con la clave PRIVADA
@@ -105,4 +116,5 @@ class JWTHandler:
             role=payload["role"],
             email=payload.get("email", ""),
             expires_at=datetime.fromtimestamp(payload["exp"], tz=timezone.utc),
+            token_type=payload.get("token_type", "access"),
         )
