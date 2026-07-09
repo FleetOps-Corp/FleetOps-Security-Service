@@ -83,7 +83,7 @@ services:
   # Responsibilities: POST /auth/register, POST /auth/login, JWT generation
   # ---------------------------------------------------------------------------
   auth_service:
-    image: ${DOCKERHUB_USERNAME}/auth-service:latest
+    image: ${DOCKERHUB_USERNAME}/fleetops-auth_service:latest
     container_name: fleetops_auth_service
     restart: unless-stopped
     env_file:
@@ -122,7 +122,7 @@ services:
   # Responsibilities: Role CRUD, RBAC validation, cache-aside with Redis
   # ---------------------------------------------------------------------------
   role_service:
-    image: ${DOCKERHUB_USERNAME}/role-service:latest
+    image: ${DOCKERHUB_USERNAME}/fleetops-role_service:latest
     container_name: fleetops_role_service
     restart: unless-stopped
     env_file:
@@ -160,7 +160,7 @@ services:
   # This is the ONLY service exposed to external traffic (SAD §8)
   # ---------------------------------------------------------------------------
   api_gateway:
-    image: ${DOCKERHUB_USERNAME}/api-gateway:latest
+    image: ${DOCKERHUB_USERNAME}/fleetops-api_gateway:latest
     container_name: fleetops_api_gateway
     restart: unless-stopped
     env_file:
