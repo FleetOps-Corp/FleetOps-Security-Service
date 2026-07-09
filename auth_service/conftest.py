@@ -1,6 +1,6 @@
 """
 conftest.py — Auth Service test configuration
-
+================================================
 Sets up environment variables required for AuthSettings() to load at import
 time, and generates an ephemeral RSA key pair written to a temp directory
 (since JWT_PRIVATE_KEY_PATH/JWT_PUBLIC_KEY_PATH are file paths read via
@@ -9,43 +9,22 @@ Settings properties, not raw string secrets like before).
 
 import os
 import shutil
+import sys
 import tempfile
+from pathlib import Path
 
 import pytest
-from cryptography.hazmat.primitives import serialization
-from cryptography.hazmat.primitives.asymmetric import rsa
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from shared_testing.rsa_keys import generate_rsa_keypair, write_pem  # noqa: E402
 
 _tmp_dir = tempfile.mkdtemp(prefix="fleetops_test_jwt_keys_")
 
+_TEST_PRIVATE_KEY, _TEST_PUBLIC_KEY = generate_rsa_keypair()
+_WRONG_PRIVATE_KEY, _ = generate_rsa_keypair()
 
-def _generate_rsa_keypair() -> tuple[str, str]:
-    key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
-    private_pem = key.private_bytes(
-        encoding=serialization.Encoding.PEM,
-        format=serialization.PrivateFormat.PKCS8,
-        encryption_algorithm=serialization.NoEncryption(),
-    ).decode()
-    public_pem = (
-        key.public_key()
-        .public_bytes(
-            encoding=serialization.Encoding.PEM,
-            format=serialization.PublicFormat.SubjectPublicKeyInfo,
-        )
-        .decode()
-    )
-    return private_pem, public_pem
-
-
-_TEST_PRIVATE_KEY, _TEST_PUBLIC_KEY = _generate_rsa_keypair()
-_WRONG_PRIVATE_KEY, _ = _generate_rsa_keypair()
-
-_private_key_path = os.path.join(_tmp_dir, "jwt_private.pem")
-_public_key_path = os.path.join(_tmp_dir, "jwt_public.pem")
-
-with open(_private_key_path, "w", encoding="utf-8") as f:
-    f.write(_TEST_PRIVATE_KEY)
-with open(_public_key_path, "w", encoding="utf-8") as f:
-    f.write(_TEST_PUBLIC_KEY)
+_private_key_path = write_pem(_TEST_PRIVATE_KEY, os.path.join(_tmp_dir, "jwt_private.pem"))
+_public_key_path = write_pem(_TEST_PUBLIC_KEY, os.path.join(_tmp_dir, "jwt_public.pem"))
 
 os.environ.setdefault("DATABASE_URL", "postgresql+asyncpg://test:test@localhost:5432/test_db")
 os.environ.setdefault("DATABASE_URL_SYNC", "postgresql+psycopg2://test:test@localhost:5432/test_db")

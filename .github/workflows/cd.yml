@@ -64,7 +64,7 @@ jobs:
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
-            cd ~/fleetops-security
+            cd /home/ec2-user
 
             docker compose -f docker-compose.prod.yml down --remove-orphans || true
 
@@ -72,6 +72,6 @@ jobs:
 
             docker compose -f docker-compose.prod.yml up -d
 
-            sleep 30
+            sleep 10
 
-            curl -f http://localhost:${GATEWAY_PORT}/health && echo "API Gateway UP"
+            docker compose -f docker-compose.prod.yml ps

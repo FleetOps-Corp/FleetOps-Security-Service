@@ -104,7 +104,7 @@ class RouteRegistry:
                 prefix="/auth",
                 upstream_url_key="auth_service_url",
                 allowed_roles=frozenset(),
-                description="Authentication endpoints: /auth/login, /auth/register",
+                description="Authentication endpoints: /auth/login, /auth/register, /auth/refresh",
             ),
             # ------------------------------------------------------------------
             # Roles — ADMINISTRADOR only

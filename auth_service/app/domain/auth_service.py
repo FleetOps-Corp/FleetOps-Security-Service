@@ -12,7 +12,10 @@ keeping this layer fully testable without a real database or Redis.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import Protocol
+
+import jwt
 
 from app.domain.jwt_handler import JWTHandler
 from app.domain.user import User, UserRole
@@ -27,6 +30,7 @@ class UserRepository(Protocol):
     """Port: persistence of User entities."""
 
     async def find_by_email(self, email: str) -> User | None: ...
+    async def find_by_id(self, user_id: str) -> User | None: ...
     async def save(self, user: User) -> User: ...
     async def exists_by_email(self, email: str) -> bool: ...
 
@@ -53,6 +57,14 @@ class RegistrationError(Exception):
     """Domain exception for registration failures."""
 
     pass
+
+
+@dataclass(frozen=True)
+class TokenPair:
+    """Value object representing access and refresh tokens issued together."""
+
+    access_token: str
+    refresh_token: str
 
 
 # ---------------------------------------------------------------------------
@@ -116,9 +128,9 @@ class AuthDomainService:
 
         return await self._repo.save(user)
 
-    async def login(self, email: str, plain_password: str) -> str:
+    async def login(self, email: str, plain_password: str) -> TokenPair:
         """
-        Authenticates a user and returns a signed JWT.
+        Authenticates a user and returns a signed access/refresh token pair.
 
         SAD §3 flow (pág. 9):
           1. validarCredenciales() — check email + password
@@ -130,7 +142,7 @@ class AuthDomainService:
             plain_password: Plain-text password from the login request.
 
         Returns:
-            Signed JWT string.
+            TokenPair containing an access token and a refresh token.
 
         Raises:
             AuthError: if credentials are invalid or account is inactive.
@@ -153,8 +165,41 @@ class AuthDomainService:
         if not user.is_active:  # pragma: no cover — defensive; User.is_password_correct already short-circuits on inactive
             raise AuthError("Account is deactivated. Contact your administrator.")
 
+        access_token = self._jwt.create_token(
+            user_id=user.id,
+            role=user.role.name,
+            email=user.email,
+            token_type="access",
+        )
+        refresh_token = self._jwt.create_token(
+            user_id=user.id,
+            role=user.role.name,
+            email=user.email,
+            token_type="refresh",
+        )
+
+        return TokenPair(access_token=access_token, refresh_token=refresh_token)
+
+    async def refresh_access_token(self, refresh_token: str) -> str:
+        """Validates a refresh token and issues a new access token."""
+        try:
+            payload = self._jwt.decode_token(refresh_token)
+        except (jwt.ExpiredSignatureError, jwt.InvalidTokenError) as exc:
+            raise AuthError("Invalid refresh token.") from exc
+
+        if payload.token_type != "refresh":
+            raise AuthError("Invalid refresh token.")
+
+        user = await self._repo.find_by_id(payload.user_id)
+        if user is None:
+            raise AuthError("Invalid refresh token.")
+
+        if not user.is_active:
+            raise AuthError("Account is deactivated. Contact your administrator.")
+
         return self._jwt.create_token(
             user_id=user.id,
             role=user.role.value,
             email=user.email,
+            token_type="access",
         )
