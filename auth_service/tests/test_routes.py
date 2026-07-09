@@ -18,9 +18,9 @@ import pytest
 from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
 
-from ..api import routes
-from ..domain.auth_service import AuthDomainService, AuthError, RegistrationError, TokenPair
-from ..domain.user import User, UserRole
+from auth_service.app.api import routes
+from auth_service.app.domain.auth_service import AuthDomainService, AuthError, RegistrationError, TokenPair
+from auth_service.app.domain.user import User, UserRole
 
 
 def _make_user(
