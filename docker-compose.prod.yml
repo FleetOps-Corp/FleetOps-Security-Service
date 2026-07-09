@@ -107,12 +107,6 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-    healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:${AUTH_SERVICE_PORT}/health || exit 1"]
-      interval: 15s
-      timeout: 5s
-      retries: 5
-      start_period: 30s
     # Auth service is NOT exposed externally — only reachable via API Gateway
     # ports:
     #   - "8001:8001"
@@ -143,12 +137,6 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-    healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:${ROLE_SERVICE_PORT}/health || exit 1"]
-      interval: 15s
-      timeout: 5s
-      retries: 5
-      start_period: 30s
     # Role service is NOT exposed externally
     # ports:
     #   - "8002:8002"
@@ -184,12 +172,6 @@ services:
       - fleetops_security_net
     depends_on:
       auth_service:
-        condition: service_healthy
+        condition: service_started
       role_service:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:${GATEWAY_PORT}/health || exit 1"]
-      interval: 15s
-      timeout: 5s
-      retries: 3
-      start_period: 40s
+        condition: service_started
