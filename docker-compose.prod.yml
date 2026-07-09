@@ -83,20 +83,23 @@ services:
   # Responsibilities: POST /auth/register, POST /auth/login, JWT generation
   # ---------------------------------------------------------------------------
   auth_service:
-    build:
-      context: ./auth_service
-      dockerfile: Dockerfile
-    volumes:
-      - ./auth_service:/app
-      - ./secrets/jwt_private.pem:/run/secrets/jwt_private.pem:ro
-      - ./secrets/jwt_public.pem:/run/secrets/jwt_public.pem:ro
+    image: ${DOCKERHUB_USERNAME}/auth-service:latest
     container_name: fleetops_auth_service
     restart: unless-stopped
     env_file:
       - .env
     environment:
-      JWT_PRIVATE_KEY_PATH: /run/secrets/jwt_private.pem
-      JWT_PUBLIC_KEY_PATH: /run/secrets/jwt_public.pem
+      DATABASE_URL: ${DATABASE_URL}
+      DATABASE_URL_SYNC: ${DATABASE_URL_SYNC}
+      REDIS_HOST: ${REDIS_HOST}
+      REDIS_PORT: ${REDIS_PORT}
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      REDIS_SESSION_CACHE_TTL: ${REDIS_SESSION_CACHE_TTL}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY}
+      JWT_ALGORITHM: ${JWT_ALGORITHM}
+      JWT_EXPIRATION_MINUTES: ${JWT_EXPIRATION_MINUTES}
+      AUTH_SERVICE_PORT: ${AUTH_SERVICE_PORT}
+      LOG_LEVEL: ${LOG_LEVEL}
     networks:
       - fleetops_security_net
     depends_on:
@@ -110,17 +113,16 @@ services:
       timeout: 5s
       retries: 5
       start_period: 30s
+    # Auth service is NOT exposed externally — only reachable via API Gateway
+    # ports:
+    #   - "8001:8001"
 
   # ---------------------------------------------------------------------------
   # Logic Layer — Role Service (SAD pág. 5: <<Role Service>> Docker Container)
   # Responsibilities: Role CRUD, RBAC validation, cache-aside with Redis
   # ---------------------------------------------------------------------------
   role_service:
-    build:
-      context: ./role_service
-      dockerfile: Dockerfile
-    volumes:
-      - ./role_service:/app
+    image: ${DOCKERHUB_USERNAME}/role-service:latest
     container_name: fleetops_role_service
     restart: unless-stopped
     env_file:
@@ -158,12 +160,7 @@ services:
   # This is the ONLY service exposed to external traffic (SAD §8)
   # ---------------------------------------------------------------------------
   api_gateway:
-    build:
-      context: ./api_gateway
-      dockerfile: Dockerfile
-    volumes:
-      - ./api_gateway:/app
-      - ./secrets/jwt_public.pem:/run/secrets/jwt_public.pem:ro
+    image: ${DOCKERHUB_USERNAME}/api-gateway:latest
     container_name: fleetops_api_gateway
     restart: unless-stopped
     env_file:
@@ -171,8 +168,8 @@ services:
     environment:
       AUTH_SERVICE_URL: ${AUTH_SERVICE_URL}
       ROLE_SERVICE_URL: ${ROLE_SERVICE_URL}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY}
       JWT_ALGORITHM: ${JWT_ALGORITHM}
-      JWT_PUBLIC_KEY_PATH: /run/secrets/jwt_public.pem
       GATEWAY_RATE_LIMIT: ${GATEWAY_RATE_LIMIT}
       GATEWAY_PORT: ${GATEWAY_PORT}
       VEHICLES_SERVICE_URL: ${VEHICLES_SERVICE_URL}
@@ -196,4 +193,3 @@ services:
       timeout: 5s
       retries: 3
       start_period: 40s
-  

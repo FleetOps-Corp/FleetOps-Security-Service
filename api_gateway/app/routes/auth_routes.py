@@ -88,3 +88,9 @@ async def login(request: Request) -> Response:
     SAD §3 flow step 1-6: User sends credentials, gets JWT back.
     """
     return await _proxy_to_auth(request, "/login")
+
+
+@router.post("/refresh")
+async def refresh(request: Request) -> Response:
+    """Proxy: POST /auth/refresh → AuthService POST /refresh."""
+    return await _proxy_to_auth(request, "/refresh")

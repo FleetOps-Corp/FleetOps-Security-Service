@@ -5,7 +5,9 @@ Coverage target: 100% of decode_jwt, extract_claims, get_optional_jwt_claims.
 Pattern: AAA (Arrange → Act → Assert)
 SAD Reference: "JWT con tiempo válido de una hora" (§7), JWT validation (§3/4)
 
-All infrastructure is mocked — no real JWT secret required in tests.
+All infrastructure is mocked — no real JWT key files required in tests.
+RSA key material (test_private_key, test_public_key, wrong_private_key) comes
+from conftest.py — single source of truth for the whole api_gateway suite.
 """
 
 import time
@@ -26,25 +28,30 @@ from app.middleware.jwt_middleware import (
 # Helpers
 # =============================================================================
 
-TEST_SECRET = "test_secret_key_for_unit_testing_only"
-TEST_ALGORITHM = "HS256"
+TEST_ALGORITHM = "RS256"
 
 
 def _make_token(
+    private_key: str,
     sub: str = "user-123",
     role: str = "EMPLEADO",
     email: str = "test@fleetops.com",
     expire_offset: int = 3600,
-    secret: str = TEST_SECRET,
 ) -> str:
-    """Creates a signed JWT for testing."""
+    """Creates a JWT signed with the given private key (simulates auth_service)."""
     payload = {
         "sub": sub,
         "role": role,
         "email": email,
         "exp": int(time.time()) + expire_offset,
     }
-    return jwt.encode(payload, secret, algorithm=TEST_ALGORITHM)
+    return jwt.encode(payload, private_key, algorithm=TEST_ALGORITHM)
+
+
+def _patch_settings(mock_settings, public_key: str) -> None:
+    """Configures the mocked settings with the test public key + RS256."""
+    mock_settings.jwt_public_key = public_key
+    mock_settings.jwt_algorithm = TEST_ALGORITHM
 
 
 # =============================================================================
@@ -76,66 +83,61 @@ class TestJWTClaims:
 
 
 class TestDecodeJWT:
-    def test_valid_token_returns_payload(self):
+    def test_valid_token_returns_payload(self, test_private_key, test_public_key):
         # Arrange
-        token = _make_token()
+        token = _make_token(test_private_key)
         # Act
         with patch("app.middleware.jwt_middleware.settings") as mock_settings:
-            mock_settings.jwt_secret_key = TEST_SECRET
-            mock_settings.jwt_algorithm = TEST_ALGORITHM
+            _patch_settings(mock_settings, test_public_key)
             payload = decode_jwt(token)
         # Assert
         assert payload["sub"] == "user-123"
         assert payload["role"] == "EMPLEADO"
 
-    def test_expired_token_raises_401(self):
+    def test_expired_token_raises_401(self, test_private_key, test_public_key):
         # Arrange — token expired 1 second ago
-        token = _make_token(expire_offset=-1)
+        token = _make_token(test_private_key, expire_offset=-1)
         # Act & Assert
         with patch("app.middleware.jwt_middleware.settings") as mock_settings:
-            mock_settings.jwt_secret_key = TEST_SECRET
-            mock_settings.jwt_algorithm = TEST_ALGORITHM
+            _patch_settings(mock_settings, test_public_key)
             with pytest.raises(HTTPException) as exc_info:
                 decode_jwt(token)
         assert exc_info.value.status_code == 401
         assert "expired" in exc_info.value.detail.lower()
 
-    def test_tampered_token_raises_401(self):
-        # Arrange — sign with a different secret
-        token = _make_token(secret="wrong_secret")
+    def test_tampered_token_raises_401(self, wrong_private_key, test_public_key):
+        # Arrange — signed with a DIFFERENT private key (attacker doesn't have ours)
+        token = _make_token(wrong_private_key)
         # Act & Assert
         with patch("app.middleware.jwt_middleware.settings") as mock_settings:
-            mock_settings.jwt_secret_key = TEST_SECRET
-            mock_settings.jwt_algorithm = TEST_ALGORITHM
+            _patch_settings(mock_settings, test_public_key)
             with pytest.raises(HTTPException) as exc_info:
                 decode_jwt(token)
         assert exc_info.value.status_code == 401
 
-    def test_malformed_token_raises_401(self):
+    def test_malformed_token_raises_401(self, test_public_key):
         # Arrange
         token = "not.a.valid.jwt"
         # Act & Assert
         with patch("app.middleware.jwt_middleware.settings") as mock_settings:
-            mock_settings.jwt_secret_key = TEST_SECRET
-            mock_settings.jwt_algorithm = TEST_ALGORITHM
+            _patch_settings(mock_settings, test_public_key)
             with pytest.raises(HTTPException) as exc_info:
                 decode_jwt(token)
         assert exc_info.value.status_code == 401
 
-    def test_empty_token_raises_401(self):
+    def test_empty_token_raises_401(self, test_public_key):
         # Arrange
         token = ""
         # Act & Assert
         with patch("app.middleware.jwt_middleware.settings") as mock_settings:
-            mock_settings.jwt_secret_key = TEST_SECRET
-            mock_settings.jwt_algorithm = TEST_ALGORITHM
+            _patch_settings(mock_settings, test_public_key)
             with pytest.raises(HTTPException) as exc_info:
                 decode_jwt(token)
         assert exc_info.value.status_code == 401
 
 
 # =============================================================================
-# extract_claims
+# extract_claims  (no depende del algoritmo de firma — sin cambios)
 # =============================================================================
 
 
@@ -211,9 +213,9 @@ class TestGetOptionalJWTClaims:
         assert result is None
 
     @pytest.mark.asyncio
-    async def test_returns_claims_for_valid_token(self):
+    async def test_returns_claims_for_valid_token(self, test_private_key, test_public_key):
         # Arrange
-        token = _make_token(sub="user-999", role="ADMINISTRADOR")
+        token = _make_token(test_private_key, sub="user-999", role="ADMINISTRADOR")
         mock_credentials = MagicMock()
         mock_credentials.credentials = token
         mock_request = MagicMock()
@@ -227,8 +229,7 @@ class TestGetOptionalJWTClaims:
             ),
             patch("app.middleware.jwt_middleware.settings") as mock_settings,
         ):
-            mock_settings.jwt_secret_key = TEST_SECRET
-            mock_settings.jwt_algorithm = TEST_ALGORITHM
+            _patch_settings(mock_settings, test_public_key)
             # Act
             result = await get_optional_jwt_claims(mock_request)
 
@@ -238,9 +239,9 @@ class TestGetOptionalJWTClaims:
         assert result.role == "ADMINISTRADOR"
 
     @pytest.mark.asyncio
-    async def test_raises_401_for_expired_token(self):
+    async def test_raises_401_for_expired_token(self, test_private_key, test_public_key):
         # Arrange
-        expired_token = _make_token(expire_offset=-1)
+        expired_token = _make_token(test_private_key, expire_offset=-1)
         mock_credentials = MagicMock()
         mock_credentials.credentials = expired_token
         mock_request = MagicMock()
@@ -254,8 +255,7 @@ class TestGetOptionalJWTClaims:
             ),
             patch("app.middleware.jwt_middleware.settings") as mock_settings,
         ):
-            mock_settings.jwt_secret_key = TEST_SECRET
-            mock_settings.jwt_algorithm = TEST_ALGORITHM
+            _patch_settings(mock_settings, test_public_key)
             # Act & Assert
             with pytest.raises(HTTPException) as exc_info:
                 await get_optional_jwt_claims(mock_request)
